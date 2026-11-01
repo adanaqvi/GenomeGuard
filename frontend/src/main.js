@@ -217,4 +217,8 @@ for (const container of [ $("nav"), $("view") ]) {
 }
 window.addEventListener("hashchange", render);
 window.addEventListener("gg:refresh-who", async () => { await boot(); drawWho(); });
+// Paint the shell and route immediately; hydrate identity and live API data in the background.
+drawWho();
+drawProv();
+render();
 boot().then(() => { drawWho(); drawProv(); render(); });
