@@ -10,13 +10,13 @@ import csv
 import gzip
 import hashlib
 import json
-import math
 import re
 from collections import Counter
 from pathlib import Path
 
 import joblib
 import numpy as np
+import pandas as pd
 import sklearn
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -66,7 +66,7 @@ def open_text(path: Path):
 
 
 def normalized_label(value: str) -> int | None:
-    terms = {part.strip().lower() for part in value.split("|")}
+    terms = {part.strip().lower() for part in re.split(r"[,|/]", value)}
     if terms & {"conflicting classifications of pathogenicity", "conflicting data from submitters"}:
         return None
     positive = terms & {"pathogenic", "likely pathogenic"}
@@ -110,7 +110,7 @@ def load_rows(path: Path) -> tuple[list[dict], list[int], list[str], Counter]:
     labels: list[int] = []
     groups: list[str] = []
     counts: Counter = Counter()
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str]] = set()
     with open_text(path) as stream:
         reader = csv.DictReader(stream, delimiter="\t")
         required = {
@@ -142,7 +142,7 @@ def load_rows(path: Path) -> tuple[list[dict], list[int], list[str], Counter]:
             if not gene or not chrom or not DNA.fullmatch(ref) or not DNA.fullmatch(alt):
                 counts["unsupported_allele_or_missing_gene"] += 1
                 continue
-            key = (chrom, ref, alt)
+            key = (chrom, (row.get("Start") or "").strip(), ref, alt)
             if key in seen:
                 counts["duplicate_allele"] += 1
                 continue
@@ -166,7 +166,8 @@ def main() -> int:
     if not args.input.is_file() or args.input.stat().st_size == 0:
         parser.error("input file is missing or empty")
 
-    X, y, groups, counts = load_rows(args.input)
+    X_rows, y, groups, counts = load_rows(args.input)
+    X = pd.DataFrame(X_rows, columns=NUMERIC + CATEGORICAL)
     if len(X) < 100 or len(set(groups)) < 10 or len(set(y)) != 2:
         raise SystemExit(
             f"Insufficient eligible data: rows={len(X)}, genes={len(set(groups))}, "
@@ -177,8 +178,8 @@ def main() -> int:
         n_splits=1, test_size=args.test_size, random_state=args.random_state
     )
     train_idx, test_idx = next(splitter.split(X, y, groups))
-    X_train = [X[i] for i in train_idx]
-    X_test = [X[i] for i in test_idx]
+    X_train = X.iloc[train_idx]
+    X_test = X.iloc[test_idx]
     y_train = np.asarray([y[i] for i in train_idx])
     y_test = np.asarray([y[i] for i in test_idx])
     train_genes = {groups[i] for i in train_idx}
