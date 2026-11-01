@@ -934,3 +934,5 @@ tbody tr:hover td { background: color-mix(in srgb,var(--gg-accent) 5%,var(--gg-s
   .kpi { border-right:0; }
   .kpi:nth-child(n+2) { border-top:1px solid var(--gg-border); }
 }
+
+.gg-live-dot-off { background:#d69b54; box-shadow:0 0 0 4px rgba(214,155,84,.12); }
