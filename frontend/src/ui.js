@@ -90,7 +90,7 @@ export function notice(kind, ...kids) { return h("div", { class: "notice " + kin
 // The banner every sample-data view carries. `leave` returns the person to the live view.
 export function sampleNotice(message, leave) {
   return h("div", { class: "notice warn sample-bar", role: "status" },
-    h("div", {}, h("span", { class: "sample-flag" }, "Sample data"), " ", message),
+    h("div", {}, h("span", { class: "sample-flag" }, "Illustrative preview"), " ", message),
     leave ? h("button", { class: "ghost", onclick: leave }, "Back to the live view") : null);
 }
 
