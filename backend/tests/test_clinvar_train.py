@@ -1,3 +1,8 @@
+import pytest
+
+pytest.importorskip("sklearn")
+pytest.importorskip("pandas")
+
 from app.ml.clinvar_train import features, normalized_label
 
 
@@ -6,6 +11,7 @@ def test_label_policy_accepts_only_binary_unambiguous_labels():
     assert normalized_label("Likely pathogenic") == 1
     assert normalized_label("Benign") == 0
     assert normalized_label("Likely benign") == 0
+    assert normalized_label("Pathogenic/Likely pathogenic") == 1
     assert normalized_label("Uncertain significance") is None
     assert normalized_label("Pathogenic|Benign") is None
     assert normalized_label("Conflicting classifications of pathogenicity") is None
