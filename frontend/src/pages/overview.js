@@ -18,18 +18,50 @@ const fact = (label, value, note = "") => h("div", { class: "gg-fact" },
   note ? h("small", {}, note) : null);
 
 function helixGraphic() {
-  const root = svg("svg", { viewBox: "0 0 460 300", class: "gg-helix", role: "img", "aria-label": "Abstract genomic double-helix visualization" });
-  for (let i = 0; i < 14; i++) {
-    const y = 18 + i * 19, a = 126 + Math.sin(i * .56) * 74, b = 300 - Math.sin(i * .56) * 74;
-    root.append(
-      svg("path", { d: "M " + a + " " + y + " Q 210 " + (y + 10) + " " + b + " " + (y + 19), fill: "none", stroke: "rgba(160,226,195,.34)", "stroke-width": 1.2 }),
-      svg("circle", { cx: a, cy: y, r: 4.2, fill: i % 3 === 0 ? "#B7A6FF" : "#62D9A5" }),
-      svg("circle", { cx: b, cy: y + 19, r: 4.2, fill: i % 3 === 1 ? "#FFB86B" : "#8CB8FF" }),
-      svg("line", { x1: a, y1: y, x2: b, y2: y + 19, stroke: "rgba(222,245,232,.18)", "stroke-width": 1 })
+  const stage = h("div", { class: "dna-stage", role: "img", "aria-label": "Interactive DNA double helix illustration. Drag horizontally to turn the helix." });
+  const art = svg("svg", { viewBox: "0 0 440 300", class: "dna-art", role: "presentation", "aria-hidden": "true" });
+  const strands = svg("g", {});
+  art.append(strands);
+  const draw = (phase = 0) => {
+    strands.replaceChildren();
+    const left = [], right = [];
+    for (let i = 0; i <= 24; i++) {
+      const y = 24 + i * 10.5, angle = i * Math.PI / 6 + phase;
+      left.push([220 + Math.sin(angle) * 66, y]);
+      right.push([220 - Math.sin(angle) * 66, y]);
+    }
+    const pathFor = (points) => points.map(([x,y],i) => (i ? "L " : "M ") + x.toFixed(1) + " " + y.toFixed(1)).join(" ");
+    strands.append(
+      svg("path", { d: pathFor(left), fill: "none", stroke: "#72e6ad", "stroke-width": 4, "stroke-linecap": "round", opacity: .9 }),
+      svg("path", { d: pathFor(right), fill: "none", stroke: "#a99aff", "stroke-width": 4, "stroke-linecap": "round", opacity: .9 })
     );
-  }
-  root.append(svg("circle", { cx: 220, cy: 150, r: 118, fill: "none", stroke: "rgba(120,220,170,.10)", "stroke-dasharray": "2 7" }));
-  return root;
+    for (let i = 1; i < 24; i++) {
+      const [x1,y] = left[i], [x2] = right[i];
+      const front = Math.cos(i * Math.PI / 6 + phase) > 0;
+      strands.append(
+        svg("line", { x1, y1:y, x2, y2:y, stroke: front ? "#b8c9d4" : "#718d91", "stroke-width": front ? 2.8 : 1.7, "stroke-linecap":"round", opacity: front ? .85 : .38 }),
+        svg("circle", { cx:x1, cy:y, r:front?4.1:3.2, fill:"#72e6ad" }),
+        svg("circle", { cx:x2, cy:y, r:front?4.1:3.2, fill:"#a99aff" })
+      );
+    }
+  };
+  draw();
+  stage.append(art, h("span", { class: "dna-drag-hint" }, "↔ DRAG TO TURN"));
+  let dragging = false, lastX = 0, phase = 0;
+  stage.addEventListener("pointerdown", (e) => {
+    dragging = true; lastX = e.clientX; stage.classList.add("is-dragging");
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    phase += (e.clientX - lastX) * .012;
+    lastX = e.clientX;
+    draw(phase);
+  });
+  const release = () => { dragging = false; stage.classList.remove("is-dragging"); };
+  stage.addEventListener("pointerup", release);
+  stage.addEventListener("pointercancel", release);
+  return stage;
 }
 function metric(label, value, note, tone = "") {
   return h("article", { class: "gg-metric " + tone },
