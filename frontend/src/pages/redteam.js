@@ -46,7 +46,7 @@ export async function render() {
     h("p", { class: "muted" }, "Zero means none occurred in this simulated traffic. The behaviours are our assumption, not measured logs.")));
 
   ledger.append(row("Not shown here", "Read this before quoting a number", h("ul", { class: "plain" },
-    [realData ? "The genotypes are real but a small sample, consent and traffic are simulated, and results from one cohort do not carry over to another." : "All data is synthetic; real genomes differ in ways that could move results either way.", "The attackers are simplified and written by the same team as the defences.", "The beacon test is a simplified replication of an arXiv paper (2001.08852), not the paper's attack.", "Researcher behaviour is assumed. False-alarm rates must be re-measured on real traffic.", "Epsilon accounting is simple sequential composition, not a formal accountant."].map((t) => h("li", {}, t)))));
+    [realData ? "The genotypes are real but the evaluated subset, consent and traffic are simulated, and results from one cohort do not carry over to another." : "All data is synthetic; real genomes differ in ways that could move results either way.", "The attackers are simplified and written by the same team as the defences.", "The beacon test is a simplified replication of an arXiv paper (2001.08852), not the paper's attack.", "Researcher behaviour is assumed. False-alarm rates must be re-measured on real traffic.", "Epsilon accounting is simple sequential composition, not a formal accountant."].map((t) => h("li", {}, t)))));
   root.append(ledger);
   return root;
 }
