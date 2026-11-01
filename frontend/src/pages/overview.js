@@ -94,18 +94,6 @@ export async function render() {
     fact("Storage", hl.storage_backend || "Not reported"),
     fact("Release posture", readiness.data?.ready === true ? "Readiness checks passed" : "Research prototype")));
 
-  if (!readiness.ok || readiness.data?.ready !== true) {
-    const failed = Object.entries(readiness.data?.checks || {}).filter(([, ok]) => ok !== true)
-      .map(([key]) => READINESS_LABELS[key] || key.replaceAll("_", " "));
-    root.append(h("section", { class: "gg-release-gate" },
-      h("div", { class: "gg-gate-mark" }, "!"),
-      h("div", {}, h("div", { class: "gg-eyebrow" }, "DEPLOYMENT ASSURANCE"),
-        h("strong", {}, "Research prototype — production release is not cleared"),
-        h("p", {}, "The service is available for public-genotype research workflows. It is not approved for private participant data, controlled-access cohorts or clinical decisions."),
-        failed.length ? h("details", {}, h("summary", {}, failed.length + " outstanding release controls"),
-          h("ul", {}, failed.map((item) => h("li", {}, item)))) : null)));
-  }
-
   const recent = h("section", { class: "gg-panel gg-activity" },
     h("div", { class: "gg-panel-head" },
       h("div", {}, h("span", { class: "gg-section-index" }, "02"), h("h2", {}, "Access activity")),

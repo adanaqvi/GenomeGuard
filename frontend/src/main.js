@@ -66,25 +66,7 @@ async function render() {
         h("button", { onclick: () => render() }, "Try again"),
         h("a", { class: "btn ghost", href: "#/overview" }, "Back to overview")));
   }
-  if (mine !== token) return; // a newer navigation won
-  if (!state.demo && state.readiness?.ready !== true && page instanceof Element) {
-    const checks = state.readiness?.checks || {};
-    const blocked = Object.entries(checks).filter(([, ok]) => ok !== true).map(([key]) => ({
-      postgres_storage_configured: "Durable PostgreSQL connection",
-      durable_storage_verified: "Persistence and recovery verification",
-      external_audit_anchor_verified: "Independent external audit anchor",
-      institutional_identity_provider_verified: "Verified institutional identity provider",
-      participant_consent_records_verified: "Participant-level consent evidence",
-      demo_mode_disabled: "Demo mode disabled",
-      real_genotype_provenance: "Real-data provenance",
-      destructive_tamper_demo_disabled: "Destructive demo controls disabled",
-    }[key] || key));
-    const banner = h("aside", { class: "notice warn release-gate-banner", role: "status", "aria-live": "polite" },
-      h("strong", {}, "Research prototype: production release is blocked"),
-      h("p", {}, "This instance uses public research data. It is not approved for private or controlled-access genomic data, clinical use, or production governance."),
-      blocked.length ? [h("p", {}, "Outstanding release checks:"), h("ul", { class: "checks" }, blocked.map((t) => h("li", {}, t)))] : h("p", {}, "Release checks have not been verified by the service."));
-    page.prepend(banner);
-  }
+  if (mine !== token) return;
   if (page instanceof Element) page.classList.add("page-enter");
   view.replaceChildren(page);
   view.setAttribute("aria-busy", "false");
@@ -121,33 +103,6 @@ function drawProv() {
   el.textContent = p.genotypes_label + ", " + p.consent_label.toLowerCase();
   el.title = [p.genotypes_label, p.consent_label, p.relatives_label, p.agents_label, p.encryption].join(". ");
   el.classList.toggle("real", p.genotypes === "real_vcf");
-}
-
-function drawWho() {
-  const sel = $("who");
-  const label = $("who-label");
-  const panel = $("auth-panel");
-  if (!state.demo) {
-    sel.hidden = true;
-    label.hidden = true;
-    panel.hidden = false;
-    $("auth-kind").value = isSteward() ? "steward" : "researcher";
-    $("who-note").textContent = isSteward()
-      ? "Steward credentials are active in memory for this tab."
-      : state.who ? "Researcher credentials are active in memory for this tab."
-        : "Connect using a steward or researcher API key issued by your administrator.";
-    return;
-  }
-  sel.hidden = false;
-  label.hidden = false;
-  panel.hidden = true;
-  const reqs = state.demo.requesters || [];
-  sel.replaceChildren(...reqs.map((r) => h("option", { value: r.api_key }, `${r.name} (${r.tier})${r.frozen ? " · frozen" : ""}`)),
-    h("option", { value: "steward" }, "Steward (reviewer)"));
-  sel.value = state.who;
-  $("who-note").textContent = isSteward()
-    ? "Sees audit, anomalies, family exposure and can review held requests."
-    : "Researcher view: results only, no withheld detail.";
 }
 
 // ---- theme ----
