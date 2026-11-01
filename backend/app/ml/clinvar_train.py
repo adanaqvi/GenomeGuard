@@ -257,7 +257,7 @@ def main() -> int:
         "model": str(model_path),
         "model_sha256": sha256(model_path),
         "metrics": str(metrics_path),
-        "metadata": str(metadata_path),
+        "metadata_file": str(metadata_path),
         "summary": {k: v for k, v in metrics.items() if isinstance(v, float)},
         "metadata": metadata,
     }, indent=2))
