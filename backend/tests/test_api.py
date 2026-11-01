@@ -309,6 +309,11 @@ def test_catalogue_endpoints():
     assert ds["dataset_key"] == svc.dataset_id
     assert ds["sample_count"] == svc.ds.n_donors
     assert ds["variant_count"] == svc.ds.n_variants
+    # Synthetic fixtures have no source checksum or assembly metadata.
+    # The API must not invent a file hash or silently label coordinates GRCh38.
+    assert ds["file_sha256"] is None
+    assert ds["source_checksum_recorded"] is False
+    assert ds["reference_assembly"] == "Not recorded"
 
     c_resp = c.get("/catalogue/chromosomes?assembly=GRCh38")
     assert c_resp.status_code == 200
@@ -316,13 +321,21 @@ def test_catalogue_endpoints():
     assert c_data["reference_assembly"] == "GRCh38"
     assert c_data["chromosome_count"] == 25
     chr22 = next(ch for ch in c_data["chromosomes"] if ch["chromosome"] == "22")
-    assert chr22["data_coverage"]["variant_data_loaded"] is True
-    assert chr22["data_coverage"]["variant_count"] == svc.ds.n_variants
+    assert chr22["data_coverage"]["variant_data_loaded"] is False
+    assert chr22["data_coverage"]["variant_count"] == 0
+
+    # Coverage is shown only for the assembly explicitly recorded on the cohort.
+    svc.provenance["reference_assembly"] = "GRCh37"
+    matching = c.get("/catalogue/chromosomes?assembly=GRCh37").json()
+    chr22_matching = next(ch for ch in matching["chromosomes"] if ch["chromosome"] == "22")
+    assert chr22_matching["data_coverage"]["variant_data_loaded"] is True
+    assert chr22_matching["data_coverage"]["variant_count"] == svc.ds.n_variants
+    mismatched = c.get("/catalogue/chromosomes?assembly=GRCh38").json()
+    chr22_mismatched = next(ch for ch in mismatched["chromosomes"] if ch["chromosome"] == "22")
+    assert chr22_mismatched["data_coverage"]["variant_data_loaded"] is False
 
     bad = c.get("/catalogue/chromosomes?assembly=invalid")
     assert bad.status_code == 400
-
-
 def test_preview_is_non_consuming_and_returns_only_risk_utility_summary():
     svc, c = make_client()
     before_budget = svc.budget(svc.authenticate(RESEARCHER)["id"])
