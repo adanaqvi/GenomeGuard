@@ -1,144 +1,164 @@
 import { api, state, isSteward } from "../api.js";
-import { h, card, kpi, badge, bands, pipeline, workflow, when, pct, notice } from "../ui.js";
-import { sampleStages } from "../sample-data.js";
+import { h, svg, card, kpi, badge, bands, pipeline, workflow, when, pct, notice } from "../ui.js";
 import { startTour, tourAvailable } from "../tour.js";
 
-const DEMO_ROSTER = [
-  ["Consent agent (demo)", "Uses simulated participant permissions for local demonstration only; these are not real consent records."],
-  ["Privacy risk assessment", "Estimates re-identification risk, including modeled relative exposure; it is not a clinical or independently validated risk score."],
-  ["Anomaly monitor", "Checks query patterns for selected probing signals and may flag or freeze demo accounts."],
-  ["Decision explainer (templates)", "Explains decisions using built-in templates; it does not imply a live language model is connected."],
-  ["Audit log", "Records events in a locally hash-chained log. The chain is tamper-evident, not an independent immutable anchor."],
-  ["Consent concierge (demo)", "Provides fixed scripted answers for the demo; it is not a real participant support channel."],
-];
-
 const READINESS_LABELS = {
-  demo_mode_disabled: "Demo mode must be disabled",
-  real_genotype_provenance: "Real genotype provenance must be verified",
-  participant_consent_records_verified: "Required participant consent records must be verified",
-  destructive_tamper_demo_disabled: "Destructive demo controls must be disabled",
-  postgres_storage_configured: "PostgreSQL persistence must be configured",
-  durable_storage_verified: "Durable persistence and recovery must be verified",
+  demo_mode_disabled: "Demonstration mode must be disabled",
+  real_genotype_provenance: "Genotype provenance must be verified",
+  participant_consent_records_verified: "Participant consent evidence must be verified",
+  destructive_tamper_demo_disabled: "Destructive controls must be disabled",
+  postgres_storage_configured: "Durable PostgreSQL storage must be configured",
+  durable_storage_verified: "Persistence and recovery must be verified",
   external_audit_anchor_verified: "Independent audit anchoring must be verified",
   institutional_identity_provider_verified: "Institutional identity must be verified",
 };
+const fmt = (n) => Number.isFinite(Number(n)) ? Number(n).toLocaleString("en-US") : "—";
+const fact = (label, value, note = "") => h("div", { class: "gg-fact" },
+  h("span", { class: "gg-fact-label" }, label), h("strong", {}, value ?? "Not reported"),
+  note ? h("small", {}, note) : null);
 
-const RESEARCH_ROSTER = [
-  ["Dataset policy provenance", "Applies the documented public-release policy mapping for this dataset. It is not participant-specific consent or a legal authorization decision."],
-  ["Privacy risk assessment", "Computes heuristic risk estimates on public genotype data; these are research signals, not independently validated risk guarantees."],
-  ["Query-pattern monitoring", "Checks selected query patterns for potential probing. Coverage is limited to the implemented detectors."],
-  ["Decision explanations", "Uses built-in templates. No live LLM is configured for this hosted instance."],
-  ["Tamper-evident audit log", "Records events in a local hash chain. No independently controlled external audit anchor is configured."],
-  ["Human review workflow", "Supports authorized review where enabled; this deployment does not provide institutional SSO or verified organizational identity."],
-];
+function helixGraphic() {
+  const root = svg("svg", { viewBox: "0 0 460 300", class: "gg-helix", role: "img", "aria-label": "Abstract genomic double-helix visualization" });
+  for (let i = 0; i < 14; i++) {
+    const y = 18 + i * 19, a = 126 + Math.sin(i * .56) * 74, b = 300 - Math.sin(i * .56) * 74;
+    root.append(
+      svg("path", { d: "M " + a + " " + y + " Q 210 " + (y + 10) + " " + b + " " + (y + 19), fill: "none", stroke: "rgba(160,226,195,.34)", "stroke-width": 1.2 }),
+      svg("circle", { cx: a, cy: y, r: 4.2, fill: i % 3 === 0 ? "#B7A6FF" : "#62D9A5" }),
+      svg("circle", { cx: b, cy: y + 19, r: 4.2, fill: i % 3 === 1 ? "#FFB86B" : "#8CB8FF" }),
+      svg("line", { x1: a, y1: y, x2: b, y2: y + 19, stroke: "rgba(222,245,232,.18)", "stroke-width": 1 })
+    );
+  }
+  root.append(svg("circle", { cx: 220, cy: 150, r: 118, fill: "none", stroke: "rgba(120,220,170,.10)", "stroke-dasharray": "2 7" }));
+  return root;
+}
+function metric(label, value, note, tone = "") {
+  return h("article", { class: "gg-metric " + tone },
+    h("div", { class: "gg-metric-top" }, h("span", {}, label), h("i", { "aria-hidden": "true" })),
+    h("strong", {}, value), h("p", {}, note));
+}
+function workflowList() {
+  const items = [
+    ["01", "Policy evaluation", "Dataset use terms and request purpose are checked."],
+    ["02", "Cohort eligibility", "Minimum cohort thresholds are enforced before release."],
+    ["03", "Disclosure-risk assessment", "Heuristic risk signals are evaluated against the request."],
+    ["04", "Output protection", "Aggregation and transformation controls are applied where required."],
+    ["05", "Query monitoring", "Potentially probing request patterns are monitored."],
+    ["06", "Human review", "Escalated decisions remain subject to authorized review."],
+    ["07", "Audit record", "The decision is written to the tamper-evident event chain."],
+  ];
+  return h("ol", { class: "gg-workflow-list" }, items.map(([n, title, desc]) =>
+    h("li", {}, h("span", { class: "gg-step-no" }, n), h("div", {},
+      h("strong", {}, title), h("p", {}, desc)))));
+}
 
 export async function render() {
-  const hasIdentity = !!(state.demo || state.who || state.adminKey);
-  const healthAtStart = state.health || {};
-  // Prefer the liveness snapshot when available. Older hosted API revisions may not
-  // include it yet; the strict readiness endpoint returns useful JSON with HTTP 503.
-  const readyRequest = healthAtStart.readiness
-    ? Promise.resolve({ ok: true, status: 200, data: healthAtStart.readiness })
-    : api("/health/ready");
-  const [reqs, verify, ev, me, readyResult] = await Promise.all([
+  const hasIdentity = !!(state.demo || state.who || state.adminKey), hl = state.health || {};
+  const readyRequest = hl.readiness ? Promise.resolve({ ok: true, status: 200, data: hl.readiness }) : api("/health/ready");
+  const [reqs, verify, ev, readyResult] = await Promise.all([
     hasIdentity ? api("/requests") : Promise.resolve({ ok: false, status: 401, data: null }),
     api("/audit/verify"),
     state.demo ? api("/eval/results") : Promise.resolve({ ok: false }),
-    isSteward() || !hasIdentity ? Promise.resolve({ ok: false }) : api("/me"),
     readyRequest,
   ]);
-  const rows = reqs.ok ? reqs.data.requests || [] : [];
-  const hl = state.health || {};
+  const rows = reqs.ok ? (reqs.data.requests || []) : [];
   const readiness = hl.readiness ? { ok: true, data: hl.readiness } : readyResult;
-  const count = (o) => rows.filter((r) => r.outcome === o).length;
-  const latest = rows[0];
-  const root = h("div", { class: "stack" });
+  const chain = verify.ok ? verify.data : null;
+  const latest = rows[0], pv = hl.provenance || {};
+  const diff = ev.ok ? ev.data?.differencing?.accuracy : null;
+  const root = h("div", { class: "stack gg-overview" });
 
-  // hero: the latest request drawn as a chromosome of stages, or an idle one
-  const idle = [["consent", "Consent"], ["risk", "Risk"], ["protect", "Protect"], ["monitor", "Watch"], ["decide", "Decide"], ["explain", "Explain"], ["audit", "Record"]]
-    .map(([id, short]) => ({ id, short, state: "idle" }));
-  let stages = idle, figureHead = "No requests yet", showingSample = false;
-  if (latest) {
-    const full = await api("/requests/" + latest.id);
-    if (full.ok) {
-      stages = workflow(full.data);
-      const q = latest.request || {};
-      figureHead = `Latest request #${latest.id}: ${q.data_level} data for ${(q.purpose || "").replaceAll("_", " ")}`;
-    }
-  }
-  // with no request yet, play a labelled sample run so the figure is not an empty strip
-  if (!latest) { stages = sampleStages(); showingSample = true; figureHead = "A request, stage by stage"; }
-  const pipe = pipeline(stages, { play: !!latest || showingSample, caption: true, idle: "Send a request and each stage fills in here, ending at the access decision." });
-  const hero = h("section", { class: "card hero" },
-    h("div", { class: "hero-copy" },
-      h("h1", {}, "Every request for genomic data gets a decision, a reason, and a record."),
-      h("p", { class: "lede" }, state.demo
-        ? "GenomeGuard demonstrates a research-access workflow with simulated participant permissions, risk checks, output protections and a tamper-evident audit log. Demo records are synthetic and are not real participant consent. Rules decide; advisory components do not grant access."
-        : "This hosted research instance evaluates requests against a documented public-dataset policy, applies heuristic risk checks and output protections, and records decisions in a tamper-evident audit log. It uses public 1000 Genomes data; policy provenance is dataset-level, not participant-specific consent. Explanations use built-in templates, and no live LLM is configured."),
-      h("div", { class: "hero-actions" },
-        tourAvailable() ? h("button", { onclick: startTour }, "Guided walkthrough") : null,
-        h("a", { class: tourAvailable() ? "btn ghost" : "btn", href: "#/requests" }, isSteward() ? "Review requests" : "Send a request"),
-        state.demo ? h("a", { class: "btn ghost", href: "#/donor" }, "Participant view") : null)),
-    h("div", { class: "hero-figure" },
-      h("div", { class: "hero-figure-h" },
-        h("span", {}, latest ? h("b", {}, figureHead) : [h("b", {}, figureHead), " ", h("span", { class: "sample-flag" }, "Sample data"), " ", h("span", { class: "muted" }, "Your own requests replace this.")]),
-        h("button", { class: "ghost", onclick: () => pipe.replay() }, "Replay")),
-      pipe));
-  root.append(hero);
+  root.append(h("section", { class: "gg-command" },
+    h("div", { class: "gg-command-copy" },
+      h("div", { class: "gg-eyebrow" }, h("span", { class: "gg-live-dot" }), "GENOMIC DATA GOVERNANCE / RESEARCH WORKSPACE"),
+      h("h1", {}, "Research access, governed with evidence."),
+      h("p", {}, "A unified workspace for genomic dataset provenance, privacy-aware access decisions and accountable research operations."),
+      h("div", { class: "gg-command-actions" },
+        h("a", { class: "gg-primary-action", href: "#/requests" }, isSteward() ? "Open review queue" : "Create access request"),
+        tourAvailable() ? h("button", { class: "gg-secondary-action", onclick: startTour }, "Explore platform") : null)),
+    h("div", { class: "gg-command-art" }, helixGraphic(),
+      h("div", { class: "gg-art-label" }, h("span", {}, "REFERENCE BUILD"),
+        h("strong", {}, pv.genotypes_label || "Public research cohort")))));
+
+  root.append(h("section", { class: "gg-metrics", "aria-label": "Research environment metrics" },
+    metric("Genotype records", fmt(hl.donors), pv.genotypes_label || "Reported by research API", "metric-green"),
+    metric("Variant loci", fmt(hl.variants), "Loaded research variant set", "metric-blue"),
+    metric("Minimum cohort threshold", fmt(hl.k_min), "Required before eligible aggregate release", "metric-violet"),
+    metric("Audit chain", chain ? (chain.ok ? "Verified" : "Integrity issue") : "Unavailable",
+      chain ? fmt(chain.length) + " recorded events" : "Integrity status unavailable", chain?.ok ? "metric-green" : "metric-amber")));
+
+  root.append(h("section", { class: "gg-source-strip" },
+    h("div", { class: "gg-source-heading" }, h("span", { class: "gg-section-index" }, "01"),
+      h("div", {}, h("strong", {}, "Research dataset"), h("small", {}, "Live service-reported provenance"))),
+    fact("Genotype source", pv.genotypes_label || "Not reported"),
+    fact("Use-policy basis", pv.consent_label || "Not reported"),
+    fact("Storage", hl.storage_backend || "Not reported"),
+    fact("Release posture", readiness.data?.ready === true ? "Readiness checks passed" : "Research prototype")));
 
   if (!readiness.ok || readiness.data?.ready !== true) {
-    const checks = readiness.data?.checks || {};
-    const failed = Object.entries(checks).filter(([, ok]) => ok !== true)
+    const failed = Object.entries(readiness.data?.checks || {}).filter(([, ok]) => ok !== true)
       .map(([key]) => READINESS_LABELS[key] || key.replaceAll("_", " "));
-    root.append(notice("warn",
-      h("strong", {}, "Production readiness is not verified."),
-      h("p", { class: "muted" }, "This deployment must be treated as a research prototype. A running API or successful page load does not prove durable storage, institutional identity, participant consent, or safe data release."),
-      failed.length ? [h("p", { class: "fine" }, "Open release checks:"), h("ul", { class: "checks" }, failed.map((t) => h("li", {}, t)))]
-        : h("p", { class: "fine" }, "The readiness endpoint is unavailable, so the system cannot verify its release controls.")));
+    root.append(h("section", { class: "gg-release-gate" },
+      h("div", { class: "gg-gate-mark" }, "!"),
+      h("div", {}, h("div", { class: "gg-eyebrow" }, "DEPLOYMENT ASSURANCE"),
+        h("strong", {}, "Research prototype — production release is not cleared"),
+        h("p", {}, "The service is available for public-genotype research workflows. It is not approved for private participant data, controlled-access cohorts or clinical decisions."),
+        failed.length ? h("details", {}, h("summary", {}, failed.length + " outstanding release controls"),
+          h("ul", {}, failed.map((item) => h("li", {}, item)))) : null)));
   }
 
-  const pv = hl.provenance || {};
-  if (pv.genotypes) root.append(card("Where the data comes from", "Labelled so nothing is overstated",
-    h("dl", { class: "facts" },
-      h("dt", {}, "Genotypes"), h("dd", {}, pv.genotypes_label),
-      h("dt", {}, "Consent / use-policy basis"), h("dd", {}, pv.consent_label + (
-        pv.consent === "simulated"
-          ? ". These are simulated records and not valid participant consent."
-          : pv.consent === "source_policy"
-            ? ". Mapped from public dataset terms; this is not participant-specific consent and has not been independently legally reviewed."
-            : ". Imported source records; their legal validity is not independently verified.")),
-      h("dt", {}, "Relatives"), h("dd", {}, pv.relatives_label),
-      h("dt", {}, "Agents"), h("dd", {}, pv.agents_label + ". They never see genotypes."),
-      h("dt", {}, "Storage"), h("dd", {}, pv.encryption))));
-  const chain = verify.ok ? verify.data : null;
-  const evd = ev.ok ? ev.data : null;
-  const diff = evd && evd.differencing ? evd.differencing.accuracy : null;
-  root.append(h("div", { class: "readout" },
-    kpi("Requests handled", rows.length, rows.length ? `${count("permit") + count("permit_with_transform")} released` : "none yet"),
-    kpi("Held for a human", count("escalate"), "waiting for a steward", count("escalate") ? "escalate" : null),
-    kpi("Denied", count("deny"), "blocked before any release", count("deny") ? "deny" : null),
-    kpi("Audit chain", chain ? (chain.ok ? "Intact" : "Broken") : "n/a",
-      chain ? h("span", {}, `${chain.length} entries`, bands(chain.head_hash, { width: 132, height: 12, label: "Banded fingerprint of the audit chain head hash" })) : "",
-      chain && !chain.ok ? "deny" : "permit")));
+  const recent = h("section", { class: "gg-panel gg-activity" },
+    h("div", { class: "gg-panel-head" },
+      h("div", {}, h("span", { class: "gg-section-index" }, "02"), h("h2", {}, "Access activity")),
+      h("a", { href: "#/requests" }, "View request register →")),
+    rows.length
+      ? h("div", { class: "gg-activity-list" }, rows.slice(0, 5).map((r) =>
+          h("a", { class: "gg-activity-row", href: "#/request/" + r.id },
+            h("span", { class: "gg-activity-id" }, "#" + r.id),
+            h("span", { class: "gg-activity-description" },
+              h("strong", {}, ((r.request || {}).purpose || "Research request").replaceAll("_", " ")),
+              h("small", {}, ((r.request || {}).data_level || "Unspecified") + " · " + when(r.ts))),
+            badge(r.outcome), h("span", { class: "gg-row-arrow" }, "↗"))))
+      : h("div", { class: "gg-empty-activity" },
+          h("div", { class: "gg-empty-icon" }, "↗"),
+          h("div", {}, h("strong", {}, hasIdentity ? "No access requests recorded" : "Connect an authorized research identity"),
+            h("p", {}, hasIdentity ? "New submissions and their review outcomes will appear here." :
+              "Request-level activity is restricted to authenticated researchers and data stewards.")),
+          h("a", { href: "#/requests" }, hasIdentity ? "Start a request →" : "Open request workspace →")));
 
-  const SAMPLE_FEED = [["permit_with_transform", "#3 disease research, frequency"], ["escalate", "#2 methods development, frequency"], ["deny", "#1 commercial use, genotype"]];
-  const feed = rows.length
-    ? h("ul", { class: "feed" }, rows.slice(0, 6).map((r) => h("li", {}, badge(r.outcome), h("a", { href: "#/request/" + r.id }, `#${r.id} ${((r.request || {}).purpose || "").replaceAll("_", " ")}, ${(r.request || {}).data_level}`), h("span", { class: "m" }, when(r.ts)))))
-    : h("div", {},
-      h("p", { class: "fine", style: "margin:0 0 6px" }, h("span", { class: "sample-flag" }, "Sample data"), state.demo ? "Open Requests and run a demo preset to replace these." : "Submit an authorized request from the Requests page to replace these."),
-      h("ul", { class: "feed" }, SAMPLE_FEED.map(([o, t]) => h("li", {}, badge(o), h("span", {}, t), h("span", { class: "m" }, "sample")))));
-  const proof = h("dl", { class: "facts" },
-    h("dt", {}, "Differencing attack, no defence"), h("dd", {}, diff ? pct(diff.none.mean, 0) + " recovered" : "run make eval"),
-    h("dt", {}, "Same attack with GenomeGuard"), h("dd", {}, diff ? pct(diff.ladder_plus_guard.mean, 0) + " (guessing is " + pct(diff.baseline.mean, 0) + ")" : "n/a"),
-    h("dt", {}, "Donors / variants"), h("dd", {}, `${hl.donors ?? "n/a"} / ${hl.variants ?? "n/a"} (${pv.genotypes_label || "provenance unknown"})`),
-    h("dt", {}, "Smallest cohort released"), h("dd", {}, String(hl.k_min ?? "n/a")));
-  root.append(h("div", { class: "grid g-main" },
-    card("Recent activity", rows.length ? h("a", { href: "#/requests" }, "All requests") : null, feed),
-    state.demo ? card("Does it hold up?", h("a", { href: "#/redteam" }, "Red-team results"), proof) : null));
+  const governance = h("section", { class: "gg-panel gg-governance" },
+    h("div", { class: "gg-panel-head" },
+      h("div", {}, h("span", { class: "gg-section-index" }, "03"), h("h2", {}, "Governance controls")),
+      h("a", { href: "#/audit" }, "Audit log →")),
+    h("div", { class: "gg-governance-grid" },
+      fact("Dataset provenance", pv.genotypes_label || "Not reported"),
+      fact("Policy mapping", pv.consent_label || "Not reported"),
+      fact("Audit integrity", chain ? (chain.ok ? "Verified" : "Integrity issue") : "Unavailable", chain ? fmt(chain.length) + " entries checked" : "No verification response"),
+      fact("Model assistance", hl.agents_use_llm ? "Configured" : "Template-based explanations", "Advisory only; rules govern release"),
+      fact("Minimum release cohort", fmt(hl.k_min), "Applied by policy engine"),
+      fact("Identity assurance", readiness.data?.checks?.institutional_identity_provider_verified === true ? "Verified" : "Not verified", "Institutional identity provider")));
+  root.append(h("div", { class: "gg-two-column" }, recent, governance));
 
-  const roster = state.demo ? DEMO_ROSTER : RESEARCH_ROSTER;
-  root.append(card(state.demo ? "Demo workflow components" : "Research workflow components",
-    state.demo ? "Simulated demonstration, not real participant governance" : "Implemented capabilities and their current limits",
-    h("div", { class: "grid g2" }, roster.map(([n, t]) => h("div", {}, h("b", {}, n), h("p", { class: "muted", style: "margin:2px 0 0" }, t))))));
+  const flowPanel = h("section", { class: "gg-panel gg-workflow" },
+    h("div", { class: "gg-panel-head" },
+      h("div", {}, h("span", { class: "gg-section-index" }, "04"), h("h2", {}, "Decision architecture")),
+      h("span", { class: "gg-panel-meta" }, "Seven-stage control path")),
+    workflowList());
+  if (latest) {
+    const full = await api("/requests/" + latest.id);
+    if (full.ok) root.append(h("section", { class: "gg-panel gg-latest" },
+      h("div", { class: "gg-panel-head" },
+        h("div", {}, h("span", { class: "gg-section-index" }, "05"), h("h2", {}, "Latest decision")),
+        h("a", { href: "#/request/" + latest.id }, "Request #" + latest.id + " →")),
+      pipeline(workflow(full.data), { play: true, caption: true })));
+  }
+  root.append(flowPanel);
+  if (state.demo && diff) root.append(h("section", { class: "gg-panel gg-evidence" },
+    h("div", { class: "gg-panel-head" },
+      h("div", {}, h("span", { class: "gg-section-index" }, "06"), h("h2", {}, "Privacy evaluation evidence")),
+      h("a", { href: "#/redteam" }, "Evaluation details →")),
+    h("div", { class: "gg-evidence-grid" },
+      fact("Attack recovery without controls", pct(diff.none?.mean, 0)),
+      fact("With GenomeGuard protections", pct(diff.ladder_plus_guard?.mean, 0)),
+      fact("Baseline guessing", pct(diff.baseline?.mean, 0))));
   return root;
 }
