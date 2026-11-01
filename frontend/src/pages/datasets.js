@@ -63,7 +63,7 @@ async function renderCatalogue(sample) {
       h("strong", {}, "The catalogue could not be reached."),
       h("p", { class: "muted" }, "No placeholder data is shown. Check the connection and try again; the rest of the workspace remains available."),
       h("p", { class: "fine" }, "Connection status: " + (response.status || "network unavailable")),
-      h("div", { class: "hero-actions" }, retry, h("button", { class: "ghost", onclick: showSample }, "Preview with sample data"))));
+      h("div", { class: "hero-actions" }, retry, h("button", { class: "ghost", onclick: showSample }, "View illustrative preview"))));
     root.append(card("What qualifies for this catalogue", "Four checks before a dataset appears", provenanceChecklist()));
     return root;
   }
@@ -91,7 +91,7 @@ async function renderCatalogue(sample) {
       h("p", { class: "muted" }, "No dataset has completed the source-review, checksum, assembly, import and count-reconciliation process. That is different from having no chromosome reference metadata."),
       h("div", { class: "hero-actions" },
         h("a", { class: "btn", href: "#/chromosomes" }, "Explore chromosome reference metadata"),
-        h("button", { class: "ghost", onclick: showSample }, "Preview with sample data"))));
+        h("button", { class: "ghost", onclick: showSample }, "View illustrative preview"))));
     root.append(card("How a dataset becomes available", "A transparent, reproducible import gate", provenanceChecklist()));
     root.append(h("p", { class: "fine dataset-footnote" }, "Nothing here is synthetic. A dataset will appear only after a real import has been verified."));
     return root;
