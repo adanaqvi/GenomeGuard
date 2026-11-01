@@ -18,34 +18,45 @@ const fact = (label, value, note = "") => h("div", { class: "gg-fact" },
   note ? h("small", {}, note) : null);
 
 function helixGraphic() {
-  const stage = h("div", { class: "dna-stage", role: "img", "aria-label": "Interactive three-dimensional DNA double helix. Drag to rotate." });
-  const model = h("div", { class: "dna-model", "aria-hidden": "true" });
-  const colors = ["#72f0b2", "#9a8cff", "#63c9ff", "#ffc477"];
-  for (let i = 0; i < 20; i++) {
-    const angle = i * Math.PI / 5, y = -132 + i * 13.8;
-    const x1 = Math.sin(angle) * 66, z1 = Math.cos(angle) * 66;
-    const x2 = -x1, z2 = -z1;
-    const rung = h("span", { class: "dna-rung", style: "top:50%;left:50%;margin-top:" + y + "px;transform:translate(-50%,-50%) rotateY(" + (angle * 180 / Math.PI) + "deg);--rung-hue:" + (i % 2 ? "#a99aff" : "#70e9b0") });
-    const bead = (x, z, color, cls) => h("span", { class: "dna-bead " + cls, style: "left:50%;top:50%;background:radial-gradient(circle at 32% 27%,#fff 0%, " + color + " 20%, color-mix(in srgb," + color + " 52%,#071b14) 78%);transform:translate3d(" + (x - 8) + "px," + (y - 8) + "px," + z + "px)" });
-    model.append(rung, bead(x1, z1, colors[i % colors.length], "dna-bead-a"), bead(x2, z2, colors[(i + 2) % colors.length], "dna-bead-b"));
-  }
-  for (let i = 0; i < 26; i++) {
-    const x = ((i * 47) % 250) - 125, y = ((i * 73) % 270) - 135, z = ((i * 31) % 110) - 55;
-    model.append(h("span", { class: "dna-particle", style: "left:50%;top:50%;transform:translate3d(" + x + "px," + y + "px," + z + "px);animation-delay:" + (i % 7) * -.43 + "s" }));
-  }
-  stage.append(model, h("span", { class: "dna-orbit dna-orbit-one" }), h("span", { class: "dna-orbit dna-orbit-two" }),
-    h("span", { class: "dna-drag-hint" }, "↔ DRAG TO EXPLORE"));
-  let dragging = false, lastX = 0, lastY = 0, rotY = -24, rotX = -10;
+  const stage = h("div", { class: "dna-stage", role: "img", "aria-label": "Interactive DNA double helix illustration. Drag horizontally to turn the helix." });
+  const art = svg("svg", { viewBox: "0 0 440 300", class: "dna-art", role: "presentation", "aria-hidden": "true" });
+  const strands = svg("g", {});
+  art.append(strands);
+  const draw = (phase = 0) => {
+    strands.replaceChildren();
+    const left = [], right = [];
+    for (let i = 0; i <= 24; i++) {
+      const y = 24 + i * 10.5, angle = i * Math.PI / 6 + phase;
+      left.push([220 + Math.sin(angle) * 66, y]);
+      right.push([220 - Math.sin(angle) * 66, y]);
+    }
+    const pathFor = (points) => points.map(([x,y],i) => (i ? "L " : "M ") + x.toFixed(1) + " " + y.toFixed(1)).join(" ");
+    strands.append(
+      svg("path", { d: pathFor(left), fill: "none", stroke: "#72e6ad", "stroke-width": 4, "stroke-linecap": "round", opacity: .9 }),
+      svg("path", { d: pathFor(right), fill: "none", stroke: "#a99aff", "stroke-width": 4, "stroke-linecap": "round", opacity: .9 })
+    );
+    for (let i = 1; i < 24; i++) {
+      const [x1,y] = left[i], [x2] = right[i];
+      const front = Math.cos(i * Math.PI / 6 + phase) > 0;
+      strands.append(
+        svg("line", { x1, y1:y, x2, y2:y, stroke: front ? "#b8c9d4" : "#718d91", "stroke-width": front ? 2.8 : 1.7, "stroke-linecap":"round", opacity: front ? .85 : .38 }),
+        svg("circle", { cx:x1, cy:y, r:front?4.1:3.2, fill:"#72e6ad" }),
+        svg("circle", { cx:x2, cy:y, r:front?4.1:3.2, fill:"#a99aff" })
+      );
+    }
+  };
+  draw();
+  stage.append(art, h("span", { class: "dna-drag-hint" }, "↔ DRAG TO TURN"));
+  let dragging = false, lastX = 0, phase = 0;
   stage.addEventListener("pointerdown", (e) => {
-    dragging = true; lastX = e.clientX; lastY = e.clientY;
-    model.style.animation = "none"; stage.classList.add("is-dragging");
+    dragging = true; lastX = e.clientX; stage.classList.add("is-dragging");
     stage.setPointerCapture(e.pointerId);
   });
   stage.addEventListener("pointermove", (e) => {
     if (!dragging) return;
-    rotY += (e.clientX - lastX) * .72; rotX = Math.max(-45, Math.min(45, rotX - (e.clientY - lastY) * .42));
-    lastX = e.clientX; lastY = e.clientY;
-    model.style.transform = "rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
+    phase += (e.clientX - lastX) * .012;
+    lastX = e.clientX;
+    draw(phase);
   });
   const release = () => { dragging = false; stage.classList.remove("is-dragging"); };
   stage.addEventListener("pointerup", release);

@@ -937,22 +937,13 @@ tbody tr:hover td { background: color-mix(in srgb,var(--gg-accent) 5%,var(--gg-s
 
 .gg-live-dot-off { background:#d69b54; box-shadow:0 0 0 4px rgba(214,155,84,.12); }
 
-/* Interactive molecular sculpture */
-.gg-command-art { perspective: 1100px; isolation:isolate; }
-.gg-command-art::before { content:""; position:absolute; width:270px; height:270px; border-radius:50%; background:radial-gradient(circle,rgba(78,222,155,.17),rgba(90,150,255,.07) 42%,transparent 72%); filter:blur(12px); }
-.dna-stage { position:relative; z-index:1; width:min(100%,440px); height:300px; display:grid; place-items:center; perspective:950px; perspective-origin:50% 48%; cursor:grab; touch-action:pan-y; user-select:none; }
+/* Lightweight, crisp interactive DNA illustration */
+.gg-command-art { perspective:none; }
+.dna-stage { position:relative; width:min(100%,440px); height:300px; display:grid; place-items:center; cursor:grab; user-select:none; touch-action:pan-y; }
 .dna-stage.is-dragging { cursor:grabbing; }
-.dna-model { position:relative; width:1px; height:1px; transform-style:preserve-3d; animation:dna-orbit 24s linear infinite; will-change:transform; }
-.dna-bead { position:absolute; width:16px; height:16px; border-radius:50%; transform-style:preserve-3d; box-shadow:0 0 13px color-mix(in srgb,currentColor 45%,transparent),inset -3px -4px 7px rgba(0,0,0,.3),inset 2px 2px 4px rgba(255,255,255,.65); }
-.dna-bead-a { box-shadow:0 0 18px rgba(100,239,174,.38),inset -3px -4px 7px rgba(0,0,0,.28),inset 2px 2px 4px rgba(255,255,255,.7); }
-.dna-bead-b { box-shadow:0 0 18px rgba(141,126,255,.34),inset -3px -4px 7px rgba(0,0,0,.28),inset 2px 2px 4px rgba(255,255,255,.7); }
-.dna-rung { position:absolute; width:132px; height:2px; border-radius:9px; background:linear-gradient(90deg,rgba(105,231,169,.04),var(--rung-hue),rgba(151,139,255,.1)); box-shadow:0 0 9px color-mix(in srgb,var(--rung-hue) 60%,transparent); transform-style:preserve-3d; }
-.dna-particle { position:absolute; width:3px; height:3px; border-radius:50%; background:#a6f5cf; box-shadow:0 0 8px 2px rgba(117,239,180,.7); animation:dna-twinkle 2.8s ease-in-out infinite alternate; }
-.dna-orbit { position:absolute; left:50%; top:50%; width:228px; height:228px; border:1px solid rgba(116,228,173,.13); border-radius:50%; transform:translate(-50%,-50%) rotateX(68deg) rotateZ(-24deg); box-shadow:0 0 24px rgba(87,205,147,.06); pointer-events:none; }
-.dna-orbit-two { width:260px; height:260px; transform:translate(-50%,-50%) rotateX(68deg) rotateZ(62deg); border-color:rgba(147,135,255,.13); }
-.dna-drag-hint { position:absolute; left:50%; bottom:7px; transform:translateX(-50%); color:rgba(190,224,202,.72); font:600 9px var(--mono); letter-spacing:.17em; white-space:nowrap; pointer-events:none; }
-@keyframes dna-orbit { from { transform:rotateX(-10deg) rotateY(-24deg); } to { transform:rotateX(-10deg) rotateY(336deg); } }
-@keyframes dna-twinkle { from { opacity:.16; } to { opacity:.9; } }
+.dna-art { display:block; width:100%; height:100%; overflow:visible; shape-rendering:geometricPrecision; }
+.dna-art path { filter:drop-shadow(0 0 3px rgba(110,226,174,.16)); }
+.dna-art circle { stroke:rgba(8,25,20,.45); stroke-width:.7; }
+.dna-drag-hint { position:absolute; left:50%; bottom:4px; transform:translateX(-50%); color:rgba(190,224,202,.72); font:600 9px var(--mono); letter-spacing:.17em; white-space:nowrap; pointer-events:none; }
 @media(max-width:900px) { .dna-stage { height:270px; } }
-@media(max-width:560px) { .dna-stage { height:240px; transform:scale(.88); } .dna-orbit { width:190px; height:190px; } .dna-orbit-two { width:218px; height:218px; } }
-@media(prefers-reduced-motion:reduce) { .dna-model,.dna-particle { animation:none; } }
+@media(max-width:560px) { .dna-stage { height:230px; } }
