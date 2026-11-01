@@ -114,7 +114,8 @@ export async function boot() {
   }
   if (!state.donor && state.donors.length) state.donor = state.donors[0];
   const reqs = state.demo.requesters || [];
-  // Do not restore an API key from browser storage. Start with the first demo
-  // requester in memory; users can switch personas for this tab as needed.
-  setWho(reqs.length ? reqs[0].api_key : "");
+  // Preserve an in-memory selection during this tab's lifetime, but never
+  // restore credentials from browser storage after a reload.
+  if (state.who === "steward" || reqs.some((r) => r.api_key === state.who)) return;
+  if (!state.who) setWho(reqs.length ? reqs[0].api_key : "");
 }
