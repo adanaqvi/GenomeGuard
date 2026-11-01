@@ -936,3 +936,14 @@ tbody tr:hover td { background: color-mix(in srgb,var(--gg-accent) 5%,var(--gg-s
 }
 
 .gg-live-dot-off { background:#d69b54; box-shadow:0 0 0 4px rgba(214,155,84,.12); }
+
+/* Lightweight, crisp interactive DNA illustration */
+.gg-command-art { perspective:none; }
+.dna-stage { position:relative; width:min(100%,440px); height:300px; display:grid; place-items:center; cursor:grab; user-select:none; touch-action:pan-y; }
+.dna-stage.is-dragging { cursor:grabbing; }
+.dna-art { display:block; width:100%; height:100%; overflow:visible; shape-rendering:geometricPrecision; }
+.dna-art path { filter:drop-shadow(0 0 3px rgba(110,226,174,.16)); }
+.dna-art circle { stroke:rgba(8,25,20,.45); stroke-width:.7; }
+.dna-drag-hint { position:absolute; left:50%; bottom:4px; transform:translateX(-50%); color:rgba(190,224,202,.72); font:600 9px var(--mono); letter-spacing:.17em; white-space:nowrap; pointer-events:none; }
+@media(max-width:900px) { .dna-stage { height:270px; } }
+@media(max-width:560px) { .dna-stage { height:230px; } }
