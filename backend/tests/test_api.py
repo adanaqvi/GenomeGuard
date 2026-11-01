@@ -329,7 +329,8 @@ def test_catalogue_endpoints():
     matching = c.get("/catalogue/chromosomes?assembly=GRCh37").json()
     chr22_matching = next(ch for ch in matching["chromosomes"] if ch["chromosome"] == "22")
     assert chr22_matching["data_coverage"]["variant_data_loaded"] is True
-    assert chr22_matching["data_coverage"]["variant_count"] == svc.ds.n_variants
+    expected_chr22_count = sum(1 for coord in svc.ds.coords if str(coord[0]).upper().removeprefix("CHR") == "22")
+    assert chr22_matching["data_coverage"]["variant_count"] == expected_chr22_count
     mismatched = c.get("/catalogue/chromosomes?assembly=GRCh38").json()
     chr22_mismatched = next(ch for ch in mismatched["chromosomes"] if ch["chromosome"] == "22")
     assert chr22_mismatched["data_coverage"]["variant_data_loaded"] is False
