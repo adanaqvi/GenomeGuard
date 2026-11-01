@@ -947,3 +947,8 @@ tbody tr:hover td { background: color-mix(in srgb,var(--gg-accent) 5%,var(--gg-s
 .dna-drag-hint { position:absolute; left:50%; bottom:4px; transform:translateX(-50%); color:rgba(190,224,202,.72); font:600 9px var(--mono); letter-spacing:.17em; white-space:nowrap; pointer-events:none; }
 @media(max-width:900px) { .dna-stage { height:270px; } }
 @media(max-width:560px) { .dna-stage { height:230px; } }
+
+/* Gentle vertical drift keeps the helix alive without a heavy 3D render loop. */
+.dna-art { animation:dna-float 4.8s ease-in-out infinite; transform-origin:50% 50%; }
+@keyframes dna-float { 0%,100% { transform:translateY(-7px); } 50% { transform:translateY(7px); } }
+@media(prefers-reduced-motion:reduce) { .dna-art { animation:none; } }
