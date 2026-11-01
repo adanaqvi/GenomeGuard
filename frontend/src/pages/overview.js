@@ -159,6 +159,6 @@ export async function render() {
     h("div", { class: "gg-evidence-grid" },
       fact("Attack recovery without controls", pct(diff.none?.mean, 0)),
       fact("With GenomeGuard protections", pct(diff.ladder_plus_guard?.mean, 0)),
-      fact("Baseline guessing", pct(diff.baseline?.mean, 0))));
+      fact("Baseline guessing", pct(diff.baseline?.mean, 0)))));
   return root;
 }
