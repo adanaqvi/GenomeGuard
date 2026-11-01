@@ -43,7 +43,9 @@ async function render() {
   $("shell").classList.remove("open");
   const mine = ++token;
   view.setAttribute("aria-busy", "true");
-  view.replaceChildren(h("div", { class: "skeleton", style: "height:120px", role: "status", "aria-label": "Loading page" }));
+  view.replaceChildren(h("div", { class: "skeleton lattice-loader", role: "status", "aria-label": "Loading page" },
+    h("div", { class: "lattice-cells", "aria-hidden": "true" }, Array.from({ length: 35 }, (_, i) => h("i", { style: "--cell:" + i }))),
+    h("span", {}, "Preparing workspace"), h("small", {}, "Loading secure research view")));
   let page;
   try {
     if (hit && !state.demo && ["donor", "redteam", "federated"].includes(hit[0].nav)) {
@@ -259,6 +261,30 @@ for (const container of [ $("nav"), $("view") ]) {
   container.addEventListener("focusin", (e) => {
     const link = e.target.closest("a[href^='#/']");
     if (link) prefetchRoute(link.getAttribute("href"));
+  });
+}
+// Subtle magnetic hover + cursor spotlight, delegated so dynamic route cards work too.
+const hoverView = $("view");
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches && !matchMedia("(hover: none)").matches) {
+  let hoverCard = null;
+  hoverView.addEventListener("pointermove", (e) => {
+    const card = e.target.closest(".gg-metric, .gg-panel, .card, .gg-fact");
+    if (card !== hoverCard) {
+      if (hoverCard) hoverCard.style.removeProperty("--mx");
+      hoverCard = card;
+    }
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty("--mx", ((e.clientX-r.left)/r.width*100).toFixed(1)+"%");
+    card.style.setProperty("--my", ((e.clientY-r.top)/r.height*100).toFixed(1)+"%");
+    card.style.setProperty("--mag-x", (((e.clientX-r.left)/r.width-.5)*5).toFixed(2)+"px");
+    card.style.setProperty("--mag-y", (((e.clientY-r.top)/r.height-.5)*5).toFixed(2)+"px");
+  }, { passive:true });
+  hoverView.addEventListener("pointerleave", () => {
+    if (hoverCard) {
+      ["--mx","--my","--mag-x","--mag-y"].forEach(k=>hoverCard.style.removeProperty(k));
+      hoverCard=null;
+    }
   });
 }
 window.addEventListener("hashchange", render);
