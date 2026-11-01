@@ -71,6 +71,8 @@ def normalized_label(value: str) -> int | None:
         return None
     positive = terms & {"pathogenic", "likely pathogenic"}
     negative = terms & {"benign", "likely benign"}
+    if not terms or not terms.issubset(LABELS):
+        return None
     if positive and not negative:
         return 1
     if negative and not positive:
@@ -110,11 +112,11 @@ def load_rows(path: Path) -> tuple[list[dict], list[int], list[str], Counter]:
     labels: list[int] = []
     groups: list[str] = []
     counts: Counter = Counter()
-    seen: set[tuple[str, str, str, str]] = set()
+    grouped: dict[tuple[str, str, str, str], tuple[dict, set[int], str]] = {}
     with open_text(path) as stream:
-        reader = csv.DictReader(stream, delimiter="\t")
+        reader = csv.DictReader(stream, delimiter="\\t")
         required = {
-            "Assembly", "Chromosome", "ReferenceAllele", "AlternateAllele",
+            "Assembly", "Chromosome", "Start", "ReferenceAllele", "AlternateAllele",
             "ClinicalSignificance", "ReviewStatus", "GeneSymbol",
         }
         missing = required - set(reader.fieldnames or [])
@@ -139,18 +141,24 @@ def load_rows(path: Path) -> tuple[list[dict], list[int], list[str], Counter]:
             alt = (row["AlternateAllele"] or "").strip()
             gene = (row["GeneSymbol"] or "").strip()
             chrom = (row["Chromosome"] or "").strip()
-            if not gene or not chrom or not DNA.fullmatch(ref) or not DNA.fullmatch(alt):
+            start = (row["Start"] or "").strip()
+            if not gene or not chrom or not start or not DNA.fullmatch(ref) or not DNA.fullmatch(alt):
                 counts["unsupported_allele_or_missing_gene"] += 1
                 continue
-            key = (chrom, (row.get("Start") or "").strip(), ref, alt)
-            if key in seen:
+            key = (chrom, start, ref, alt)
+            if key not in grouped:
+                grouped[key] = (features(ref, alt), {label}, gene)
+            else:
+                grouped[key][1].add(label)
                 counts["duplicate_allele"] += 1
-                continue
-            seen.add(key)
-            rows.append(features(ref, alt))
-            labels.append(label)
-            groups.append(gene)
-            counts["included"] += 1
+    for feature_row, observed_labels, gene in grouped.values():
+        if len(observed_labels) != 1:
+            counts["conflicting_variant_labels"] += 1
+            continue
+        rows.append(feature_row)
+        labels.append(next(iter(observed_labels)))
+        groups.append(gene)
+        counts["included"] += 1
     return rows, labels, groups, counts
 
 
