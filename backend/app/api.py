@@ -645,7 +645,7 @@ def create_app(svc: GenomeGuardService | None = None) -> Starlette:
         # Standard human chromosome sizes for GRCh38 / GRCh37 (bp).
         GRCH38 = [
             ("1", "autosome", 248956422), ("2", "autosome", 242193529),
-            ("3", "autosome", 198022430), ("4", "autosome", 190214555),
+            ("3", "autosome", 198295559), ("4", "autosome", 190214555),
             ("5", "autosome", 181538259), ("6", "autosome", 170805979),
             ("7", "autosome", 159345973), ("8", "autosome", 145138636),
             ("9", "autosome", 138394717), ("10", "autosome", 133797422),
