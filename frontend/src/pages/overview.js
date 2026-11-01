@@ -69,7 +69,7 @@ export async function render() {
 
   root.append(h("section", { class: "gg-command" },
     h("div", { class: "gg-command-copy" },
-      h("div", { class: "gg-eyebrow" }, h("span", { class: "gg-live-dot" }), state.demo ? "DEMONSTRATION ENVIRONMENT / SYNTHETIC COHORT" : "GENOMIC DATA GOVERNANCE / RESEARCH WORKSPACE"),
+      h("div", { class: "gg-eyebrow" }, h("span", { class: hl.status === "ok" ? "gg-live-dot" : "gg-live-dot gg-live-dot-off" }), state.demo ? "DEMONSTRATION ENVIRONMENT / SYNTHETIC COHORT" : "GENOMIC DATA GOVERNANCE / RESEARCH WORKSPACE"),
       h("h1", {}, "Research access, governed with evidence."),
       h("p", {}, "A unified workspace for genomic dataset provenance, privacy-aware access decisions and accountable research operations."),
       h("div", { class: "gg-command-actions" },
@@ -84,7 +84,7 @@ export async function render() {
     metric("Variant loci", fmt(hl.variants), "Loaded research variant set", "metric-blue"),
     metric("Minimum cohort threshold", fmt(hl.k_min), "Required before eligible aggregate release", "metric-violet"),
     metric("Audit chain", chain ? (chain.ok ? "Verified" : "Integrity issue") : "Unavailable",
-      chain ? fmt(chain.length) + " recorded events" : "Integrity status unavailable", chain?.ok ? "metric-green" : "metric-amber")));
+      chain ? (chain.length ? fmt(chain.length) + " recorded events" : "No access events recorded yet") : "Integrity status unavailable", chain?.ok ? "metric-green" : "metric-amber")));
 
   root.append(h("section", { class: "gg-source-strip" },
     h("div", { class: "gg-source-heading" }, h("span", { class: "gg-section-index" }, "01"),
@@ -132,7 +132,7 @@ export async function render() {
     h("div", { class: "gg-governance-grid" },
       fact("Dataset provenance", pv.genotypes_label || "Not reported"),
       fact("Policy mapping", pv.consent_label || "Not reported"),
-      fact("Audit integrity", chain ? (chain.ok ? "Verified" : "Integrity issue") : "Unavailable", chain ? fmt(chain.length) + " entries checked" : "No verification response"),
+      fact("Audit integrity", chain ? (chain.ok ? "Verified" : "Integrity issue") : "Unavailable", chain ? (chain.length ? fmt(chain.length) + " entries checked" : "No access events recorded yet") : "No verification response"),
       fact("Model assistance", hl.agents_use_llm ? "Configured" : "Template-based explanations", "Advisory only; rules govern release"),
       fact("Minimum release cohort", fmt(hl.k_min), "Applied by policy engine"),
       fact("Identity assurance", readiness.data?.checks?.institutional_identity_provider_verified === true ? "Verified" : "Not verified", "Institutional identity provider")));
