@@ -5,6 +5,8 @@ import { startTour, tourAvailable } from "./tour.js";
 const ROUTES = [
   { re: /^#\/chromosomes$/, load: () => import("./pages/chromosomes.js"), nav: "chromosomes", title: "Chromosomes" },
   { re: /^#\/datasets$/, load: () => import("./pages/datasets.js"), nav: "datasets", title: "Datasets" },
+  { re: /^#\/variants(?:\?.*)?$/, load: () => import("./pages/variants.js"), nav: "variants", title: "Variant inspector" },
+  { re: /^#\/dataset-qc$/, load: () => import("./pages/dataset-qc.js"), nav: "dataset-qc", title: "Dataset QC" },
   { re: /^#\/overview$/, load: () => import("./pages/overview.js"), nav: "overview", title: "Overview" },
   { re: /^#\/requests$/, load: () => import("./pages/requests.js"), nav: "requests", title: "Requests" },
   { re: /^#\/request\/(\d+)$/, load: () => import("./pages/decision.js"), nav: "requests", title: "Decision" },
@@ -21,11 +23,10 @@ function prefetchRoute(hash) {
   hit.prefetched = true;
   hit.load().catch(() => { hit.prefetched = false; }); // a failed prefetch must remain retryable
 }
-
 const NAV = [
-  [null, [["overview", "Overview", "#/overview"], ["chromosomes", "Chromosomes", "#/chromosomes"], ["datasets", "Datasets", "#/datasets"]]],
+  [null, [["overview", "Overview", "#/overview"], ["chromosomes", "Chromosomes", "#/chromosomes"], ["variants", "Variant inspector", "#/variants"], ["datasets", "Datasets", "#/datasets"]]],
   ["Researcher", [["requests", "Requests", "#/requests"]]],
-  ["Steward", [["family", "Family exposure", "#/family/1", true], ["anomalies", "Anomalies", "#/anomalies", true], ["audit", "Audit log", "#/audit", true]]],
+  ["Steward", [["dataset-qc", "Dataset QC", "#/dataset-qc", true], ["family", "Family exposure", "#/family/1", true], ["anomalies", "Anomalies", "#/anomalies", true], ["audit", "Audit log", "#/audit", true]]],
   ["Patient", [["donor", "My data", "#/donor"]]],
   ["Evidence", [["redteam", "Red-team results", "#/redteam"], ["federated", "Federated analysis", "#/federated"]]],
 ];
@@ -84,7 +85,7 @@ function visibleNav() {
   if (state.demo) return NAV;
   return NAV.map(([label, items]) => [label, items.filter(([id]) => {
     if (["donor", "redteam", "federated"].includes(id)) return false;
-    if (["family", "anomalies", "audit"].includes(id)) return isSteward();
+    if (["dataset-qc", "family", "anomalies", "audit"].includes(id)) return isSteward();
     return true;
   })]).filter(([, items]) => items.length);
 }
@@ -94,6 +95,48 @@ function drawNav(active) {
     h("div", { class: "nav-group" }, label ? h("div", { class: "nav-label" }, label) : null,
       items.map(([id, text, href, steward]) =>
         h("a", { href, "aria-current": id === active ? "page" : false }, text, steward ? h("span", { class: "tag" }, "steward") : null)))));
+}
+
+function drawWho() {
+  const selector = $("who");
+  const label = $("who-label");
+  const authPanel = $("auth-panel");
+  const note = $("who-note");
+
+  if (state.demo) {
+    // Demo mode offers explicit synthetic personas; never expose real credentials here.
+    label.hidden = false;
+    selector.hidden = false;
+    authPanel.hidden = true;
+    const options = [
+      ["steward", "Data steward"],
+      ...(state.demo.requesters || []).map((r) => [r.api_key, r.name || r.institution || "Researcher"]),
+    ];
+    selector.replaceChildren(...options.map(([value, text]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      return option;
+    }));
+    selector.value = state.who || "";
+    note.textContent = isSteward()
+      ? "Demo steward persona · synthetic cohort"
+      : "Demo researcher persona · synthetic cohort";
+    return;
+  }
+
+  // In real-data mode identities are supplied as short-lived credentials, not selectable
+  // demo personas. Keep the selector hidden and show the credential panel instead.
+  label.hidden = true;
+  selector.hidden = true;
+  authPanel.hidden = false;
+  if (state.adminKey) {
+    note.textContent = "Steward credentials are active in memory for this tab.";
+  } else if (state.who) {
+    note.textContent = "Researcher credentials are active in memory for this tab.";
+  } else {
+    note.textContent = "No identity connected. Use an institution-issued API key.";
+  }
 }
 
 function drawProv() {

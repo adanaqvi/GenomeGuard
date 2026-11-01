@@ -163,9 +163,12 @@ def main() -> None:
                     return
                 errors.append(f"HTTP {response.status}: {path}")
         pg.on("response", check_response)
-        pg.goto(base + "/#/overview")
-        pg.wait_for_timeout(1500)
-        pg.get_by_role("button", name="Guided walkthrough").click()
+        pg.goto(base + "/#/overview", wait_until="domcontentloaded")
+        # Demo identity is hydrated asynchronously by boot(); wait for the real control
+        # instead of assuming the API and dataset bootstrap finish within 1.5 seconds.
+        tour_button = pg.get_by_role("button", name="Guided walkthrough")
+        tour_button.wait_for(state="visible", timeout=30000)
+        tour_button.click()
         notes: dict[int, str] = {}
         for step in range(1, 9):
             if step in (2, 4):
@@ -239,18 +242,19 @@ def main() -> None:
                           and history_layout.get("timestampWhiteSpace") == "nowrap", str(history_layout))
                 if hsh == "#/overview":
                     proof_layout = pg.evaluate("""() => {
-                      const card = document.querySelector(".g-main > .card:last-child");
-                      const facts = card?.querySelector("dl.facts");
-                      if (!card || !facts) return {missing: true};
-                      const cardRect = card.getBoundingClientRect();
-                      const dds = [...facts.querySelectorAll("dd")];
-                      const cols = getComputedStyle(facts).gridTemplateColumns.split(" ").map(parseFloat);
-                      return {missing: false, cardWidth: cardRect.width, columnCount: cols.length,
-                        valuesFit: dds.every(e => e.scrollWidth <= e.clientWidth + 1 &&
-                          e.getBoundingClientRect().right <= cardRect.right - 8 && e.clientWidth >= 100)};
+                      const panel = document.querySelector(".gg-evidence");
+                      const grid = panel?.querySelector(".gg-evidence-grid");
+                      if (!panel || !grid) return {missing: true};
+                      const panelRect = panel.getBoundingClientRect();
+                      const values = [...grid.querySelectorAll(".gg-fact strong")];
+                      const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").map(parseFloat);
+                      return {missing: false, panelWidth: panelRect.width, columnCount: cols.length,
+                        valueCount: values.length,
+                        valuesFit: values.length === 3 && values.every(e => e.scrollWidth <= e.clientWidth + 1 &&
+                          e.getBoundingClientRect().right <= panelRect.right - 8 && e.clientWidth >= 100)};
                     }""")
-                    check("overview evidence metrics stack without clipping",
-                          not proof_layout.get("missing") and proof_layout.get("columnCount") == 1
+                    check("overview evidence metrics render without clipping",
+                          not proof_layout.get("missing") and proof_layout.get("columnCount") == 3
                           and proof_layout.get("valuesFit", False), str(proof_layout))
                 bad = {k: v for k, v in r.items() if isinstance(v, list) and v}
                 check(f"{hsh}", r["h1"] == 1 and not bad,
