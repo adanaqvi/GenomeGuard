@@ -52,6 +52,42 @@ def test_vcf_split_alt_records_have_unique_variant_indices(tmp_path):
     assert rows[2]["alt_allele_frequency"] == pytest.approx(0.5)
 
 
+def test_vcf_rejects_whitespace_and_control_characters_in_sample_ids(tmp_path):
+    path = _vcf(tmp_path)
+    text = path.read_text(encoding="utf-8").replace("SAMPLE_A", "SAMPLE_A ")
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ImportValidationError, match="sample identifiers"):
+        read_header(path, "GRCh37")
+
+
+def test_vcf_rejects_non_decimal_positions(tmp_path):
+    path = _vcf(tmp_path)
+    text = path.read_text(encoding="utf-8").replace("22\t100\t", "22\t+100\t")
+    path.write_text(text, encoding="utf-8")
+    _, samples = read_header(path, "GRCh37")
+    with pytest.raises(ImportValidationError, match="invalid position"):
+        list(iter_records(path, samples, "GRCh37"))
+
+
+def test_vcf_rejects_duplicate_format_fields(tmp_path):
+    path = _vcf(tmp_path)
+    text = path.read_text(encoding="utf-8").replace("\tGT\t", "\tGT:GT\t")
+    path.write_text(text, encoding="utf-8")
+    _, samples = read_header(path, "GRCh37")
+    with pytest.raises(ImportValidationError, match="exactly one GT"):
+        list(iter_records(path, samples, "GRCh37"))
+
+
+def test_vcf_rejects_conflicting_assembly_metadata(tmp_path):
+    path = _vcf(tmp_path)
+    text = path.read_text(encoding="utf-8").replace(
+        "##reference=GRCh37", "##reference=GRCh37\n##assembly=GRCh38"
+    )
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ImportValidationError, match="lacks recognizable assembly"):
+        read_header(path, "GRCh37")
+
+
 def test_vcf_assembly_mismatch_fails_closed(tmp_path):
     path = _vcf(tmp_path, "GRCh37")
     with pytest.raises(ImportValidationError, match="assembly mismatch"):
@@ -134,8 +170,11 @@ def test_vcf_rejects_unsorted_coordinates(tmp_path):
 
 
 
-# A repeat of an already-loaded, byte-identical dataset must be a no-op.
-def test_loaded_manifest_import_is_idempotent_without_deleting_or_reimporting(tmp_path, monkeypatch):
+# A repeat import is a no-op only when persisted rows still match the loaded manifest.
+@pytest.mark.parametrize(("measured_counts", "expect_error"), [((2, 3, 5), False), ((2, 3, 4), True)])
+def test_loaded_manifest_import_reconciles_counts_before_noop(
+    tmp_path, monkeypatch, measured_counts, expect_error
+):
     from types import SimpleNamespace
 
     from app.data import vcf_import
@@ -176,6 +215,8 @@ def test_loaded_manifest_import_is_idempotent_without_deleting_or_reimporting(tm
                 )
             elif "SELECT sample_count, variant_count, genotype_call_count" in sql:
                 self.last_row = (2, 3, 5)
+            elif "SELECT count(*) FROM genomeguard.dataset_samples" in sql:
+                self.last_row = measured_counts
             elif "DELETE FROM genomeguard." in sql:
                 raise AssertionError("idempotent import must not delete existing data")
 
@@ -211,6 +252,11 @@ def test_loaded_manifest_import_is_idempotent_without_deleting_or_reimporting(tm
     conn = Connection()
     monkeypatch.setenv("DATABASE_URL", "postgresql://test-only")
     monkeypatch.setattr(vcf_import.psycopg, "connect", lambda *_args, **_kwargs: conn)
+
+    if expect_error:
+        with pytest.raises(ImportValidationError, match="do not reconcile"):
+            vcf_import.import_to_database(args, digest, ["SAMPLE_A", "SAMPLE_B"])
+        return
 
     result = vcf_import.import_to_database(args, digest, ["SAMPLE_A", "SAMPLE_B"])
     assert result == {
