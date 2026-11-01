@@ -1,5 +1,5 @@
 import { api, state, isSteward } from "../api.js";
-import { h, svg, card, kpi, badge, bands, pipeline, workflow, when, pct, notice } from "../ui.js";
+import { h, svg, badge, pipeline, workflow, when, pct } from "../ui.js";
 import { startTour, tourAvailable } from "../tour.js";
 
 const READINESS_LABELS = {
@@ -69,7 +69,7 @@ export async function render() {
 
   root.append(h("section", { class: "gg-command" },
     h("div", { class: "gg-command-copy" },
-      h("div", { class: "gg-eyebrow" }, h("span", { class: "gg-live-dot" }), "GENOMIC DATA GOVERNANCE / RESEARCH WORKSPACE"),
+      h("div", { class: "gg-eyebrow" }, h("span", { class: "gg-live-dot" }), state.demo ? "DEMONSTRATION ENVIRONMENT / SYNTHETIC COHORT" : "GENOMIC DATA GOVERNANCE / RESEARCH WORKSPACE"),
       h("h1", {}, "Research access, governed with evidence."),
       h("p", {}, "A unified workspace for genomic dataset provenance, privacy-aware access decisions and accountable research operations."),
       h("div", { class: "gg-command-actions" },
@@ -80,7 +80,7 @@ export async function render() {
         h("strong", {}, pv.genotypes_label || "Public research cohort")))));
 
   root.append(h("section", { class: "gg-metrics", "aria-label": "Research environment metrics" },
-    metric("Genotype records", fmt(hl.donors), pv.genotypes_label || "Reported by research API", "metric-green"),
+    metric("Individuals in cohort", fmt(hl.donors), pv.genotypes_label || "Reported by research API", "metric-green"),
     metric("Variant loci", fmt(hl.variants), "Loaded research variant set", "metric-blue"),
     metric("Minimum cohort threshold", fmt(hl.k_min), "Required before eligible aggregate release", "metric-violet"),
     metric("Audit chain", chain ? (chain.ok ? "Verified" : "Integrity issue") : "Unavailable",
