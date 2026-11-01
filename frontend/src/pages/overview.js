@@ -85,12 +85,17 @@ function workflowList() {
 
 export async function render() {
   const hasIdentity = !!(state.demo || state.who || state.adminKey), hl = state.health || {};
-  const readyRequest = hl.readiness ? Promise.resolve({ ok: true, status: 200, data: hl.readiness }) : api("/health/ready");
+  // Keep the overview responsive when the API or audit store is cold: non-critical
+  // panels get a short budget and never hold the first paint hostage.
+  const quick = (promise, fallback, ms = 650) => Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
   const [reqs, verify, ev, readyResult] = await Promise.all([
-    hasIdentity ? api("/requests") : Promise.resolve({ ok: false, status: 401, data: null }),
-    api("/audit/verify"),
-    state.demo ? api("/eval/results") : Promise.resolve({ ok: false }),
-    readyRequest,
+    hasIdentity ? quick(api("/requests"), { ok: false, data: null }) : Promise.resolve({ ok: false, status: 401, data: null }),
+    quick(api("/audit/verify"), { ok: false, data: null }),
+    state.demo ? quick(api("/eval/results"), { ok: false }) : Promise.resolve({ ok: false }),
+    hl.readiness ? Promise.resolve({ ok: true, status: 200, data: hl.readiness }) : quick(api("/health/ready"), { ok: false, data: null }),
   ]);
   const rows = reqs.ok ? (reqs.data.requests || []) : [];
   const readiness = hl.readiness ? { ok: true, data: hl.readiness } : readyResult;
@@ -163,14 +168,7 @@ export async function render() {
       h("div", {}, h("span", { class: "gg-section-index" }, "04"), h("h2", {}, "Decision architecture")),
       h("span", { class: "gg-panel-meta" }, "Seven-stage control path")),
     workflowList());
-  if (latest) {
-    const full = await api("/requests/" + latest.id);
-    if (full.ok) root.append(h("section", { class: "gg-panel gg-latest" },
-      h("div", { class: "gg-panel-head" },
-        h("div", {}, h("span", { class: "gg-section-index" }, "05"), h("h2", {}, "Latest decision")),
-        h("a", { href: "#/request/" + latest.id }, "Request #" + latest.id + " →")),
-      pipeline(workflow(full.data), { play: true, caption: true })));
-  }
+  // Detailed decision traces are loaded on their own route, never during overview paint.
   root.append(flowPanel);
   if (state.demo && diff) root.append(h("section", { class: "gg-panel gg-evidence" },
     h("div", { class: "gg-panel-head" },
