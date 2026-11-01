@@ -18,18 +18,39 @@ const fact = (label, value, note = "") => h("div", { class: "gg-fact" },
   note ? h("small", {}, note) : null);
 
 function helixGraphic() {
-  const root = svg("svg", { viewBox: "0 0 460 300", class: "gg-helix", role: "img", "aria-label": "Abstract genomic double-helix visualization" });
-  for (let i = 0; i < 14; i++) {
-    const y = 18 + i * 19, a = 126 + Math.sin(i * .56) * 74, b = 300 - Math.sin(i * .56) * 74;
-    root.append(
-      svg("path", { d: "M " + a + " " + y + " Q 210 " + (y + 10) + " " + b + " " + (y + 19), fill: "none", stroke: "rgba(160,226,195,.34)", "stroke-width": 1.2 }),
-      svg("circle", { cx: a, cy: y, r: 4.2, fill: i % 3 === 0 ? "#B7A6FF" : "#62D9A5" }),
-      svg("circle", { cx: b, cy: y + 19, r: 4.2, fill: i % 3 === 1 ? "#FFB86B" : "#8CB8FF" }),
-      svg("line", { x1: a, y1: y, x2: b, y2: y + 19, stroke: "rgba(222,245,232,.18)", "stroke-width": 1 })
-    );
+  const stage = h("div", { class: "dna-stage", role: "img", "aria-label": "Interactive three-dimensional DNA double helix. Drag to rotate." });
+  const model = h("div", { class: "dna-model", "aria-hidden": "true" });
+  const colors = ["#72f0b2", "#9a8cff", "#63c9ff", "#ffc477"];
+  for (let i = 0; i < 20; i++) {
+    const angle = i * Math.PI / 5, y = -132 + i * 13.8;
+    const x1 = Math.sin(angle) * 66, z1 = Math.cos(angle) * 66;
+    const x2 = -x1, z2 = -z1;
+    const rung = h("span", { class: "dna-rung", style: "top:50%;left:50%;margin-top:" + y + "px;transform:translate(-50%,-50%) rotateY(" + (angle * 180 / Math.PI) + "deg);--rung-hue:" + (i % 2 ? "#a99aff" : "#70e9b0") });
+    const bead = (x, z, color, cls) => h("span", { class: "dna-bead " + cls, style: "left:50%;top:50%;background:radial-gradient(circle at 32% 27%,#fff 0%, " + color + " 20%, color-mix(in srgb," + color + " 52%,#071b14) 78%);transform:translate3d(" + (x - 8) + "px," + (y - 8) + "px," + z + "px)" });
+    model.append(rung, bead(x1, z1, colors[i % colors.length], "dna-bead-a"), bead(x2, z2, colors[(i + 2) % colors.length], "dna-bead-b"));
   }
-  root.append(svg("circle", { cx: 220, cy: 150, r: 118, fill: "none", stroke: "rgba(120,220,170,.10)", "stroke-dasharray": "2 7" }));
-  return root;
+  for (let i = 0; i < 26; i++) {
+    const x = ((i * 47) % 250) - 125, y = ((i * 73) % 270) - 135, z = ((i * 31) % 110) - 55;
+    model.append(h("span", { class: "dna-particle", style: "left:50%;top:50%;transform:translate3d(" + x + "px," + y + "px," + z + "px);animation-delay:" + (i % 7) * -.43 + "s" }));
+  }
+  stage.append(model, h("span", { class: "dna-orbit dna-orbit-one" }), h("span", { class: "dna-orbit dna-orbit-two" }),
+    h("span", { class: "dna-drag-hint" }, "↔ DRAG TO EXPLORE"));
+  let dragging = false, lastX = 0, lastY = 0, rotY = -24, rotX = -10;
+  stage.addEventListener("pointerdown", (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    model.style.animation = "none"; stage.classList.add("is-dragging");
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    rotY += (e.clientX - lastX) * .72; rotX = Math.max(-45, Math.min(45, rotX - (e.clientY - lastY) * .42));
+    lastX = e.clientX; lastY = e.clientY;
+    model.style.transform = "rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
+  });
+  const release = () => { dragging = false; stage.classList.remove("is-dragging"); };
+  stage.addEventListener("pointerup", release);
+  stage.addEventListener("pointercancel", release);
+  return stage;
 }
 function metric(label, value, note, tone = "") {
   return h("article", { class: "gg-metric " + tone },
