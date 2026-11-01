@@ -36,11 +36,11 @@ export function sampleDatasets() {
   return {
     provenance_note: "Sample view. These dataset records are invented to preview the layout. They are not imports and carry no consent or authorization.",
     datasets: [
-      { source_name: "Sample cohort A (illustrative)", dataset_key: "sample-cohort-a", source_release: "2026.1", reference_assembly: "GRCh38",
+      { source_name: "Illustrative cohort A", dataset_key: "sample-cohort-a", source_release: "2026.1", reference_assembly: "GRCh38",
         source_url: "", file_sha256: hex(11), sample_count: 2504, variant_count: 1073741, genotype_call_count: 2688558264, imported_at: "2026-09-14T10:22:00Z" },
-      { source_name: "Sample cohort B (illustrative)", dataset_key: "sample-cohort-b", source_release: "2026.1", reference_assembly: "GRCh38",
+      { source_name: "Illustrative cohort B", dataset_key: "sample-cohort-b", source_release: "2026.1", reference_assembly: "GRCh38",
         source_url: "", file_sha256: hex(29), sample_count: 612, variant_count: 640212, genotype_call_count: 391808544, imported_at: "2026-09-21T16:05:00Z" },
-      { source_name: "Sample cohort C (illustrative)", dataset_key: "sample-cohort-c", source_release: "2025.4", reference_assembly: "GRCh37",
+      { source_name: "Illustrative cohort C", dataset_key: "sample-cohort-c", source_release: "2025.4", reference_assembly: "GRCh37",
         source_url: "", file_sha256: hex(47), sample_count: 188, variant_count: 214903, genotype_call_count: 40401764, imported_at: "2026-10-02T08:40:00Z" },
     ],
   };

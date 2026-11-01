@@ -30,7 +30,7 @@ function provenanceChecklist() {
       ["01", "Source reviewed", "The exact collection and its reuse terms must be reviewed."],
       ["02", "File verified", "The imported artifact is tied to a SHA-256 checksum."],
       ["03", "Assembly checked", "Reference assembly and genomic coordinates must agree."],
-      ["04", "Counts reconciled", "Measured samples, variants and genotype calls must reconcile."],
+      ["04", "Counts reconciled", "Measured individuals, variants and genotype calls must reconcile."],
     ].map(([n, title, detail]) => h("article", { class: "dataset-check" },
       h("span", { class: "dataset-check-number", "aria-hidden": "true" }, n),
       h("div", {}, h("h3", {}, title), h("p", {}, detail)))));
@@ -63,7 +63,7 @@ async function renderCatalogue(sample) {
       h("strong", {}, "The catalogue could not be reached."),
       h("p", { class: "muted" }, "No placeholder data is shown. Check the connection and try again; the rest of the workspace remains available."),
       h("p", { class: "fine" }, "Connection status: " + (response.status || "network unavailable")),
-      h("div", { class: "hero-actions" }, retry, h("button", { class: "ghost", onclick: showSample }, "Preview with sample data"))));
+      h("div", { class: "hero-actions" }, retry, h("button", { class: "ghost", onclick: showSample }, "View illustrative preview"))));
     root.append(card("What qualifies for this catalogue", "Four checks before a dataset appears", provenanceChecklist()));
     return root;
   }
@@ -79,7 +79,7 @@ async function renderCatalogue(sample) {
 
   root.append(h("section", { class: "grid g3 dataset-metrics", "aria-label": "Verified catalogue totals" },
     card("Verified datasets", fmt(datasets.length), h("p", { class: "muted" }, "Eligible catalogue entries")),
-    card("Imported samples", fmt(totals.samples), h("p", { class: "muted" }, "Measured source samples")),
+    card("Individuals imported", fmt(totals.samples), h("p", { class: "muted" }, "Measured individuals in source")),
     card("Normalized variants", fmt(totals.variants), h("p", { class: "muted" }, "Split alternate-allele records"))));
 
   root.append(sample ? "" : notice("info", data.provenance_note ||
@@ -91,7 +91,7 @@ async function renderCatalogue(sample) {
       h("p", { class: "muted" }, "No dataset has completed the source-review, checksum, assembly, import and count-reconciliation process. That is different from having no chromosome reference metadata."),
       h("div", { class: "hero-actions" },
         h("a", { class: "btn", href: "#/chromosomes" }, "Explore chromosome reference metadata"),
-        h("button", { class: "ghost", onclick: showSample }, "Preview with sample data"))));
+        h("button", { class: "ghost", onclick: showSample }, "View illustrative preview"))));
     root.append(card("How a dataset becomes available", "A transparent, reproducible import gate", provenanceChecklist()));
     root.append(h("p", { class: "fine dataset-footnote" }, "Nothing here is synthetic. A dataset will appear only after a real import has been verified."));
     return root;
@@ -105,7 +105,7 @@ async function renderCatalogue(sample) {
   const body = h("tbody", {});
   const table = h("table", { class: "dataset-table" },
     h("thead", {}, h("tr", {}, ...[
-      "Dataset", "Source release", "Assembly", "SHA-256", "Samples", "Variants", "Genotype calls", "Imported",
+      "Dataset", "Source release", "Assembly", "SHA-256", "Individuals", "Variants", "Genotype calls", "Imported",
     ].map((label) => h("th", { scope: "col" }, label)))),
     body);
 

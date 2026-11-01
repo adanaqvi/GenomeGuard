@@ -8,7 +8,7 @@ const plain = (s) => String(s || "").replaceAll("_", " ");
 
 export async function render() {
   const root = h("div", { class: "donor" });
-  if (!state.donors.length) return h("div", { class: "empty" }, "Simulated participant records are unavailable because the sample-data mode is disabled.");
+  if (!state.donors.length) return h("div", { class: "empty" }, "Simulated participant records are unavailable because the demonstration dataset is disabled.");
   const body = h("div", { class: "stack" });
   const pick = h("select", { id: "persona", "aria-label": "Simulated participant", onchange: (e) => { state.donor = state.donors.find((d) => String(d.id) === e.target.value); load(); } },
     state.donors.map((d) => h("option", { value: d.id }, d.label)));

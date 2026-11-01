@@ -22,7 +22,7 @@ async function renderAssembly(assembly, sample = false) {
       h("strong", {}, "Chromosome coverage service is not reachable from this deployment."),
       h("p", { class: "muted" }, "The live Supabase chromosome catalogue could not be loaded. Check the connection and try again; no placeholder counts are shown."),
       h("p", { class: "fine" }, "Technical status: HTTP " + (response.status || "network error")),
-      h("button", { onclick: showSample }, "Preview with sample data")));
+      h("button", { onclick: showSample }, "View illustrative preview")));
     root.append(card("What this page will show", "No simulated records",
       h("ul", {},
         h("li", {}, "Reference assembly and chromosome length from the Genome Reference Consortium."),
@@ -91,7 +91,7 @@ async function renderAssembly(assembly, sample = false) {
   };
   search.addEventListener("input", paint);
   onlyLoaded.addEventListener("change", paint);
-  root.append(card("Chromosome coverage", sample ? "Sample values, not read from a database" : "Live database counts, not inferred from the reference catalogue",
+  root.append(card("Chromosome coverage", sample ? "Illustrative values, not read from a database" : "Live database counts, not inferred from the reference catalogue",
     h("div", { class: "explorer-bar" },
       h("label", { for: "assembly-filter" }, "Reference assembly", assemblySelect),
       search,

@@ -169,8 +169,8 @@ function formSection(out) {
     const c = r.data, ex = c.excluded_by_reason || {};
     const total = c.considered || 1, out_ = Object.values(ex).reduce((a, b2) => a + b2, 0);
     preview.replaceChildren(
-      h("div", { class: "bar", role: "img", "aria-label": `${c.eligible} of ${c.considered} samples within policy mapping` }, h("i", { class: "seg-ok", style: `width:${(100 * c.eligible) / total}%` }), h("i", { class: "seg-ex", style: `width:${(100 * out_) / total}%` })),
-      h("div", { class: "legend" }, h("span", {}, h("b", {}, c.eligible), (state.demo ? ` of ${c.considered} synthetic donors pass simulated permission rules for this request` : ` of ${c.considered} samples pass the dataset-level public-release policy mapping for this request`)),
+      h("div", { class: "bar", role: "img", "aria-label": `${c.eligible} of ${c.considered} individuals within policy mapping` }, h("i", { class: "seg-ok", style: `width:${(100 * c.eligible) / total}%` }), h("i", { class: "seg-ex", style: `width:${(100 * out_) / total}%` })),
+      h("div", { class: "legend" }, h("span", {}, h("b", {}, c.eligible), (state.demo ? ` of ${c.considered} synthetic donors pass simulated permission rules for this request` : ` of ${c.considered} individuals pass the dataset-level public-release policy mapping for this request`)),
         Object.entries(ex).sort((a, b2) => b2[1] - a[1]).map(([k, v]) => h("span", {}, `${v} excluded: ${reasonText(k)}`))));
   }
   async function submit(b, btn) {

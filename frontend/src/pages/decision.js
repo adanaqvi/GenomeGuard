@@ -34,7 +34,7 @@ export async function render([id]) {
       : "Dataset-level public-release policy; not participant-specific consent",
       h("p", { style: "margin:0" }, h("b", {}, eligible), state.demo
         ? ` of ${considered} synthetic donors pass simulated permission rules.`
-        : ` of ${considered} samples pass the dataset-level policy mapping for this request.`),
+        : ` of ${considered} individuals pass the dataset-level policy mapping for this request.`),
       !state.demo ? h("p", { class: "muted" }, "This is not evidence of individual consent, clinical authorization, or legal approval.") : null,
       h("div", { class: "bar", role: "img", "aria-label": `${eligible} eligible of ${considered}` }, h("i", { class: "seg-ok", style: `width:${(100 * eligible) / (considered || 1)}%` }), h("i", { class: "seg-ex", style: `width:${(100 * out_) / (considered || 1)}%` })),
       Object.keys(ex).length ? h("ul", { class: "plain" }, Object.entries(ex).sort((a, b) => b[1] - a[1]).map(([k, v]) => h("li", {}, `${v} excluded: ${reasonText(k)}`))) : null));
@@ -124,8 +124,8 @@ function toolSummary(tool, r) {
         : state.demo
           ? `${c.eligible} of ${c.considered} synthetic donors pass simulated permission rules.`
           : state.health?.provenance?.consent === "source_records"
-            ? `${c.eligible} of ${c.considered} samples pass source-matched consent rules.`
-            : `${c.eligible} of ${c.considered} samples pass the dataset-level policy mapping; this is not participant-specific consent.`;
+            ? `${c.eligible} of ${c.considered} individuals pass source-matched consent rules.`
+            : `${c.eligible} of ${c.considered} individuals pass the dataset-level policy mapping; this is not participant-specific consent.`;
     }
     case "risk_profile": {
       const b = r.risk_before || {}, a = r.risk_after || {};
