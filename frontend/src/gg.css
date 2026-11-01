@@ -952,3 +952,15 @@ tbody tr:hover td { background: color-mix(in srgb,var(--gg-accent) 5%,var(--gg-s
 .dna-art { animation:dna-float 4.8s ease-in-out infinite; transform-origin:50% 50%; }
 @keyframes dna-float { 0%,100% { transform:translateY(-7px); } 50% { transform:translateY(7px); } }
 @media(prefers-reduced-motion:reduce) { .dna-art { animation:none; } }
+
+/* Animate the whole illustration container so the SVG remains crisp and draggable. */
+.dna-art { animation:none !important; }
+.dna-stage { animation:dna-float 3.6s ease-in-out infinite; will-change:transform; }
+@keyframes dna-float {
+  0%,100% { transform:translate3d(0,-9px,0); }
+  50% { transform:translate3d(0,9px,0); }
+}
+.dna-stage.is-dragging { animation-play-state:paused; }
+@media(prefers-reduced-motion:reduce) {
+  .dna-stage { animation:none !important; will-change:auto; }
+}
