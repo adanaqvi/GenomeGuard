@@ -15,7 +15,7 @@ from redteam import run_eval
 
 warnings.filterwarnings("ignore", message="GG_MASTER_KEY")
 REAL_META = {"source": "1000 Genomes (IGSR)", "genotypes_real": True, "consent_simulated": True,
-             "family_enriched": True}
+             "family_enriched": True, "reference_assembly": "GRCh37"}
 
 
 def _cohort_file(d: str, meta: dict) -> str:
@@ -78,6 +78,7 @@ def test_app_provenance_follows_the_files_metadata_not_its_existence():
         assert "Real VCF genotypes" in real_svc.provenance["genotypes_label"]
         assert "source not independently authenticated" in real_svc.provenance["genotypes_label"]
         assert real_svc.provenance["consent"] == "simulated"  # consent is never real
+        assert real_svc.provenance["reference_assembly"] == "GRCh37"
         fake_svc = _boot(_cohort_file(d, {"source": "unknown"}))
         assert fake_svc.provenance["genotypes"] == "custom"
         assert "Real" not in fake_svc.provenance["genotypes_label"]

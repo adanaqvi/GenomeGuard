@@ -595,52 +595,54 @@ def create_app(svc: GenomeGuardService | None = None) -> Starlette:
     # These replace the Supabase Edge Function calls that previously required
     # an external publishable key. All data comes from the local backend.
 
-    @route("GET", "/catalogue/datasets", "Local dataset catalogue (replaces Supabase Edge Function)", "public")
+    @route("GET", "/catalogue/datasets", "Local dataset catalogue with source-backed provenance", "public")
     async def catalogue_datasets(request):
-        """Return a catalogue of datasets from the local service.
-        Mirrors the shape that Supabase /functions/v1/genomeguard-api/datasets returned."""
+        """Describe the in-memory cohort without inventing source provenance."""
         svc = S()
         provenance = getattr(svc, "provenance", {})
         genotype_kind = provenance.get("genotypes", "unknown")
-        # Build a single synthetic catalogue entry from the running service state.
         datasets: list[dict] = []
-        if genotype_kind not in ("unknown",):
-            import hashlib
-            import json as _json
-            meta_str = _json.dumps(provenance, sort_keys=True)
-            fake_sha = hashlib.sha256(meta_str.encode()).hexdigest()
+        if genotype_kind != "unknown":
+            import re
+            source_sha256 = provenance.get("source_vcf_sha256")
+            checksum_recorded = isinstance(source_sha256, str) and bool(
+                re.fullmatch(r"[0-9a-f]{64}", source_sha256)
+            )
             datasets = [{
                 "dataset_key": svc.dataset_id,
-                "source_name": provenance.get("genotype_source") or "GenomeGuard synthetic cohort",
-                "source_release": "local",
-                "reference_assembly": "GRCh38",
-                "file_sha256": provenance.get("source_vcf_sha256") or fake_sha,
-                "sample_count": svc.ds.n_donors,
-                "variant_count": svc.ds.n_variants,
-                "genotype_call_count": svc.ds.n_donors * svc.ds.n_variants,
-                "source_url": None,
-                "imported_at": None,
-                "variant_data_loaded": True,
+                "source_name": provenance.get("genotype_source") or provenance.get("genotypes_label") or "Unknown source",
+                "source_release": provenance.get("source_release") or "Not recorded",
+                "reference_assembly": provenance.get("reference_assembly") or "Not recorded",
+                "file_sha256": source_sha256 if checksum_recorded else None,
+                "source_checksum_recorded": checksum_recorded,
+                "sample_count": int(svc.ds.n_donors),
+                "variant_count": int(svc.ds.n_variants),
+                "genotype_call_count": int(svc.ds.n_donors * svc.ds.n_variants),
+                "source_url": provenance.get("source_url"),
+                "imported_at": provenance.get("imported_at"),
+                "variant_data_loaded": bool(svc.ds.n_donors and svc.ds.n_variants),
+                "genotype_provenance": genotype_kind,
+                "consent_basis": provenance.get("consent_basis", "unknown"),
             }]
         return _j({
             "datasets": datasets,
             "dataset_count": len(datasets),
             "provenance_note": (
-                "Dataset-level public-research approval is not participant-specific consent "
-                "or clinical authorization. This catalogue is served locally with no external "
-                "database dependency."
+                "Only source-supplied checksums and metadata are reported; missing provenance is shown as unavailable, never synthesized. "
+                "Dataset-level public-research approval is not participant-specific consent or clinical authorization."
             ),
         })
 
-    @route("GET", "/catalogue/chromosomes", "Local chromosome reference (replaces Supabase Edge Function)", "public")
+    @route("GET", "/catalogue/chromosomes", "Reference lengths and assembly-matched local coverage", "public")
     async def catalogue_chromosomes(request):
-        """Return chromosome reference metadata from the local service.
-        Mirrors the shape that Supabase /functions/v1/genomeguard-api/chromosomes returned."""
+        """Report local coverage only when the loaded cohort assembly is explicitly known."""
         assembly = request.query_params.get("assembly", "GRCh38")
         if assembly not in ("GRCh37", "GRCh38"):
             raise ServiceError(400, "invalid_assembly", "Choose GRCh37 or GRCh38.")
         svc = S()
-        # Standard human chromosome sizes for GRCh38 / GRCh37 (bp, authoritative reference lengths).
+        provenance = getattr(svc, "provenance", {})
+        dataset_assembly = provenance.get("reference_assembly")
+        # Standard human chromosome sizes for GRCh38 / GRCh37 (bp).
         GRCH38 = [
             ("1", "autosome", 248956422), ("2", "autosome", 242193529),
             ("3", "autosome", 198295559), ("4", "autosome", 190214555),
@@ -653,8 +655,7 @@ def create_app(svc: GenomeGuardService | None = None) -> Starlette:
             ("17", "autosome", 83257441), ("18", "autosome", 80373285),
             ("19", "autosome", 58617616), ("20", "autosome", 64444167),
             ("21", "autosome", 46709983), ("22", "autosome", 50818468),
-            ("X", "sex", 156040895), ("Y", "sex", 57227415),
-            ("MT", "mitochondrial", 16569),
+            ("X", "sex", 156040895), ("Y", "sex", 57227415), ("MT", "mitochondrial", 16569),
         ]
         GRCH37 = [
             ("1", "autosome", 249250621), ("2", "autosome", 243199373),
@@ -668,40 +669,38 @@ def create_app(svc: GenomeGuardService | None = None) -> Starlette:
             ("17", "autosome", 81195210), ("18", "autosome", 78077248),
             ("19", "autosome", 59128983), ("20", "autosome", 63025520),
             ("21", "autosome", 48129895), ("22", "autosome", 51304566),
-            ("X", "sex", 155270560), ("Y", "sex", 59373566),
-            ("MT", "mitochondrial", 16571),
+            ("X", "sex", 155270560), ("Y", "sex", 59373566), ("MT", "mitochondrial", 16571),
         ]
         ref = GRCH38 if assembly == "GRCh38" else GRCH37
-        # Mark chr22 as having variant data if the local dataset contains genotypes
-        # (GenomeGuard's synthetic and real cohorts are chr22-based).
-        has_variants = svc.ds.n_variants > 0
+        def normalize_chromosome(value):
+            chrom = str(value).upper().removeprefix("CHR")
+            return "MT" if chrom == "M" else chrom
+        # Coverage is derived from actual coordinates and withheld if assembly is unknown/mismatched.
+        positions_by_chrom: dict[str, list[int]] = {}
+        if dataset_assembly == assembly:
+            for coord in svc.ds.coords or []:
+                chrom, position = coord[0], int(coord[1])
+                positions_by_chrom.setdefault(normalize_chromosome(chrom), []).append(position)
         rows = []
         for chrom, kind, length_bp in ref:
-            # Only chr22 has local variant records (GenomeGuard cohort scope).
-            loaded = has_variants and chrom == "22"
+            positions = positions_by_chrom.get(chrom, [])
+            loaded = bool(positions)
             rows.append({
-                "chromosome": chrom,
-                "kind": kind,
-                "length_bp": length_bp,
+                "chromosome": chrom, "kind": kind, "length_bp": length_bp,
                 "data_coverage": {
-                    "variant_count": svc.ds.n_variants if loaded else 0,
-                    "first_position": None,
-                    "last_position": None,
+                    "variant_count": len(positions),
+                    "first_position": min(positions) if loaded else None,
+                    "last_position": max(positions) if loaded else None,
                     "variant_data_loaded": loaded,
                 },
             })
         return _j({
-            "reference_assembly": assembly,
-            "chromosome_count": len(rows),
-            "chromosomes": rows,
+            "reference_assembly": assembly, "chromosome_count": len(rows), "chromosomes": rows,
             "provenance_note": (
-                "GRCh38/GRCh37 chromosome reference lengths are from the Genome Reference "
-                "Consortium. Variant record counts come from the local GenomeGuard backend. "
-                "A chromosome is not available for analysis unless variant_data_loaded is true "
-                "and its dataset provenance is verified. No external database is required."
+                "Reference lengths are from the Genome Reference Consortium. Local coverage is reported only when "
+                "the loaded dataset reference assembly matches the requested assembly; absent or mismatched provenance is not treated as coverage."
             ),
         })
-
     @route("GET", "/openapi.json", "Machine-readable endpoint list", "public")
     async def openapi(request):
         return _j({"openapi": "3.0.0-lite", "info": {"title": "GenomeGuard", "version": "0.2.0"},
