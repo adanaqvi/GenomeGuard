@@ -91,7 +91,7 @@ async function renderAssembly(assembly, sample = false) {
   };
   search.addEventListener("input", paint);
   onlyLoaded.addEventListener("change", paint);
-  root.append(card("Chromosome coverage", sample ? "Sample values, not read from a database" : "Live database counts, not inferred from the reference catalogue",
+  root.append(card("Chromosome coverage", sample ? "Illustrative values, not read from a database" : "Live database counts, not inferred from the reference catalogue",
     h("div", { class: "explorer-bar" },
       h("label", { for: "assembly-filter" }, "Reference assembly", assemblySelect),
       search,
