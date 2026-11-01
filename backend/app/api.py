@@ -658,13 +658,13 @@ def create_app(svc: GenomeGuardService | None = None) -> Starlette:
             ("X", "sex", 156040895), ("Y", "sex", 57227415), ("MT", "mitochondrial", 16569),
         ]
         GRCH37 = [
-            ("1", "autosome", 249250621), ("2", "autosome", 243199529),
+            ("1", "autosome", 249250621), ("2", "autosome", 243199373),
             ("3", "autosome", 198022430), ("4", "autosome", 191154276),
             ("5", "autosome", 180915260), ("6", "autosome", 171115067),
             ("7", "autosome", 159138663), ("8", "autosome", 146364022),
             ("9", "autosome", 141213431), ("10", "autosome", 135534747),
-            ("11", "autosome", 135006622), ("12", "autosome", 133851895),
-            ("13", "autosome", 115169540), ("14", "autosome", 107349540),
+            ("11", "autosome", 135006516), ("12", "autosome", 133851895),
+            ("13", "autosome", 115169878), ("14", "autosome", 107349540),
             ("15", "autosome", 102531392), ("16", "autosome", 90354753),
             ("17", "autosome", 81195210), ("18", "autosome", 78077248),
             ("19", "autosome", 59128983), ("20", "autosome", 63025520),
