@@ -1,10 +1,6 @@
-// Tiny API client. The "acting as" choice picks which header is sent:
-// a researcher's X-API-Key, or the steward's X-Admin-Key. Demo keys come from /demo/requesters.
-// Donors use their own X-Donor-Key (kept in memory only, never in storage).
-function readStorage(key) {
-  try { return localStorage.getItem(key) || ""; }
-  catch { return ""; } // storage can be blocked by browser privacy settings
-}
+// Tiny API client. Credentials are deliberately kept in tab memory only.
+// Never read or write API keys to localStorage, sessionStorage, URLs, or logs.
+// Donors use their own X-Donor-Key and are also kept in memory only.
 
 // Defer any remembered identity until the server confirms demo mode.
 export const state = { who: "", adminKey: "", demo: null, health: null, readiness: null, bootError: "", me: null, donors: [], donor: null };
@@ -13,11 +9,8 @@ export const isSteward = () => state.who === "steward";
 
 export function setWho(v) {
   state.who = v;
-  // Demo personas are convenient for the public demo. Real credentials must stay in memory only.
-  try {
-    if (state.demo) localStorage.setItem("gg_who", v);
-    else localStorage.removeItem("gg_who");
-  } catch { /* storage can be blocked */ }
+  // Clear credentials left by older builds; never persist the selected identity/key.
+  try { localStorage.removeItem("gg_who"); } catch { /* storage can be blocked */ }
 }
 
 async function call(path, { method = "GET", body, headers = {} } = {}) {
@@ -121,10 +114,7 @@ export async function boot() {
   }
   if (!state.donor && state.donors.length) state.donor = state.donors[0];
   const reqs = state.demo.requesters || [];
-  const remembered = readStorage("gg_who");
-  if (remembered === "steward" || reqs.some((r) => r.api_key === remembered)) {
-    setWho(remembered);
-  } else {
-    setWho(reqs.length ? reqs[0].api_key : "");
-  }
+  // Do not restore an API key from browser storage. Start with the first demo
+  // requester in memory; users can switch personas for this tab as needed.
+  setWho(reqs.length ? reqs[0].api_key : "");
 }
