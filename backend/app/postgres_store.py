@@ -127,6 +127,59 @@ class PostgresStore(Store):
                     self.connection.execute(statement)
             self.connection.execute("INSERT INTO schema_migrations(version) VALUES (1)")
 
+    def lookup_population_frequencies(
+        self, chromosome: str, position: int, reference: str, alternate: str, assembly: str,
+    ) -> dict:
+        """Read public aggregate frequencies under a narrowly scoped database role."""
+        statement = """
+            SELECT
+                m.dataset_key, m.source_name, m.source_release, m.source_url,
+                m.file_sha256, m.reference_assembly,
+                f.population, f.allele_count, f.allele_number,
+                f.allele_frequency, f.homozygote_count
+            FROM genomeguard.population_variant_frequency AS f
+            JOIN genomeguard.population_reference_manifest AS m ON m.id = f.dataset_id
+            WHERE f.chromosome = %s AND f.position = %s
+              AND f.reference_allele = %s AND f.alternate_allele = %s
+              AND m.reference_assembly = %s
+              AND m.data_use_review = 'approved_public_research'
+              AND m.import_status = 'loaded'
+            ORDER BY m.source_name, m.source_release, f.population
+            LIMIT 1001
+        """
+        try:
+            with self.lock, self.connection.transaction():
+                self.connection.execute("SET TRANSACTION READ ONLY")
+                self.connection.execute("SET LOCAL ROLE genomeguard_reference_reader")
+                self.connection.execute("SET LOCAL statement_timeout = '3000ms'")
+                rows = self.connection.execute(
+                    statement, (chromosome, position, reference, alternate, assembly),
+                ).fetchall()
+            truncated = len(rows) > 1000
+            matches = [{
+                "dataset_key": row["dataset_key"],
+                "source_name": row["source_name"],
+                "source_release": row["source_release"],
+                "source_url": row["source_url"],
+                "file_sha256": row["file_sha256"],
+                "reference_assembly": row["reference_assembly"],
+                "population": row["population"],
+                "allele_count": int(row["allele_count"]),
+                "allele_number": int(row["allele_number"]),
+                "allele_frequency": float(row["allele_frequency"]),
+                "homozygote_count": (
+                    int(row["homozygote_count"]) if row["homozygote_count"] is not None else None
+                ),
+            } for row in rows[:1000]]
+            return {"status": "available" if matches else "empty", "matches": matches, "truncated": truncated}
+        except psycopg.Error:
+            # Missing migrations/role grants or a disconnected reference database should not
+            # leak credentials, SQL details, or block the metadata-only variant search.
+            return {
+                "status": "unavailable", "matches": [],
+                "message": "Approved aggregate population-reference lookup is unavailable in this database.",
+            }
+
     def q(self, sql: str, args: tuple = ()) -> list[dict]:
         with self.lock:
             rows = list(self.connection.execute(_translate(sql), args).fetchall())
