@@ -114,7 +114,7 @@ def load_rows(path: Path) -> tuple[list[dict], list[int], list[str], Counter]:
     counts: Counter = Counter()
     grouped: dict[tuple[str, str, str, str], tuple[dict, set[int], str]] = {}
     with open_text(path) as stream:
-        reader = csv.DictReader(stream, delimiter="\\t")
+        reader = csv.DictReader(stream, delimiter="\t")
         required = {
             "Assembly", "Chromosome", "Start", "ReferenceAllele", "AlternateAllele",
             "ClinicalSignificance", "ReviewStatus", "GeneSymbol",
