@@ -997,3 +997,12 @@ label:has(input[type="radio"]:checked) input[type="radio"]{accent-color:var(--pe
 .lattice-loader small{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
 @keyframes lattice-wave{0%,100%{opacity:.12;transform:scale(.78)}45%{opacity:.95;transform:scale(1.18);box-shadow:0 0 12px color-mix(in srgb,var(--permit) 60%,transparent)}}
 @media(prefers-reduced-motion:reduce){.gg-metric,.gg-panel,.card,.gg-fact,label:has(input[type="radio"]),.lattice-cells i{transition:none;animation:none}.gg-metric:hover,.gg-panel:hover,.card:hover,.gg-fact:hover{transform:none}}
+
+/* Provenance-bound aggregate population-frequency rows in the Variant Inspector. */
+.population-frequency-controls { display: grid; justify-items: start; gap: 8px; margin-top: 16px; }
+.population-frequency-controls button { width: auto; }
+.population-frequency-results { width: 100%; margin-top: 12px; }
+.population-frequency-table { width: 100%; }
+.population-frequency-table table { min-width: 760px; }
+.population-frequency-table td { overflow-wrap: anywhere; }
+.popfreq-checksum { display: inline-block; max-width: 260px; overflow-wrap: anywhere; }

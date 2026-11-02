@@ -43,9 +43,20 @@ DATABASE_URL='...' python -m app.data.gnomad_reference export-xlsx \
 
 The exporter streams database rows and splits at Excel's 1,048,576-row worksheet limit (including the header). It fails rather than generating an empty or misleading workbook. For very large datasets, use the database or source TSV for analysis; Excel is a convenience export, not the canonical store.
 
+
+## Read-only API lookup
+
+After applying both reference migrations and configuring the runtime database login to assume genomeguard_reference_reader, the public metadata endpoint can serve an exact allele lookup:
+
+GET /variants/population-frequency?chromosome=22&position=105123&reference_allele=A&alternate_allele=G&assembly=GRCh38
+
+The API reads only aggregate frequency rows whose manifest is both approved_public_research and loaded. It returns source name, release, URL, artifact checksum, assembly, population, AC, AN, AF, and homozygote count. It never queries participant calls. Applying the migration creates the narrow reader role and grants its membership to Supabase service_role when that role exists; for another runtime login, a database administrator must grant membership before serving lookups.
+
+The response status is available, empty, or unavailable. Missing serving-role grants, database access, migrations, or a matching approved loaded manifest produce an honest empty or unavailable response; the endpoint does not synthesize values. The Variant Inspector requires a selected or provenance-declared assembly and labels these results as aggregate reference evidence, separate from GenomeGuard participant data and governed releases. No public reference is claimed to be imported or loaded by this code alone.
+
 ## Current implementation status
 
-This code provides the normalized TSV import and Excel export commands. It does not download the source artifact, perform source-term approval, run the import, or connect to a production database. Do not claim data is loaded until a steward has completed those steps and reconciled row counts. gnomAD's represented cohort size must never be described as 807,162 individual profiles available for download.
+This code provides normalized TSV import, Excel export, and a read-only exact-locus API lookup. It does not download the source artifact, perform source-term approval, run the import, or connect to a production database. Do not claim data is loaded until a steward has completed those steps and reconciled row counts. gnomAD's represented cohort size must never be described as 807,162 individual profiles available for download.
 
 Sources:
 - https://gnomad.broadinstitute.org/news/2023-11-gnomad-v4/
